@@ -1,0 +1,155 @@
+version: '3.7'
+services:
+  ndt-server:
+    image: measurementlab/ndt-server:v0.21.0
+    volumes:
+      - ./certs:/certs
+      - ./html:/html
+      - ./schemas:/schemas
+      - ./resultsdir:/resultsdir
+    cap_drop:
+      - ALL
+    depends_on:
+      generate-schemas-ndt7:
+        condition: service_completed_successfully
+      generate-uuid:
+        condition: service_completed_successfully
+
+    # NOTE: All containers will use the same network and IP. All ports
+    # must be configured on the first service.
+    ports:
+      # ndt-server TLS and non-TLS ports.
+      - target: 4443
+        published: 4443
+        protocol: tcp
+        mode: bridge
+      - target: 8080
+        published: 8080
+        protocol: tcp
+        mode: bridge
+      # ndt-server prometheus.
+      - target: 9990
+        published: 9990
+        protocol: tcp
+        mode: bridge
+      # jostler prometheus.
+      - target: 9991
+        published: 9991
+        protocol: tcp
+        mode: bridge
+      # annotator prometheus.
+      - target: 9992
+        published: 9992
+        protocol: tcp
+        mode: bridge
+    command:
+      - -uuid-prefix-file=/schemas/uuid.prefix
+      - -cert=/certs/cert.pem
+      - -key=/certs/key.pem
+      - -datadir=/resultsdir/ndt
+      - -ndt7_addr=:4443
+      - -ndt7_addr_cleartext=:8080
+      # Allow ndt7 data to be autoloaded.
+      - -compress-results=false
+      # TODO: confirm device name.
+      - -txcontroller.device=eth0
+      - -txcontroller.max-rate=150000000
+      - -prometheusx.listen-address=:9990
+      # Add server metadata.
+      - -label=type=virtual
+      - -label=deployment=byos
+      # TODO: add helpful server location metadata labels.
+      - -label=region=TODO
+      # Effectively disable ndt5.
+      - -ndt5_addr=127.0.0.1:3002
+      - -ndt5_ws_addr=127.0.0.1:3001
+      - -tcpinfo.eventsocket=/schemas/events.sock
+
+  uuid-annotator:
+    image: measurementlab/uuid-annotator:v0.5.4
+    volumes:
+      - ./resultsdir:/resultsdir
+      - ./schemas:/schemas
+      - ./testdata:/testdata
+    depends_on:
+      ndt-server:
+        condition: service_started
+    network_mode: "service:ndt-server"
+    # NOTE: all database URLs are required. Minimal, incomplete versions of
+    # each are included in the testdata directory.
+    command:
+      - -prometheusx.listen-address=:9992
+      - -datadir=/resultsdir/annotation2
+      - -tcpinfo.eventsocket=/schemas/events.sock
+      - -ipservice.sock=/schemas/uuid-annotator.sock
+      # TODO: enable live URLs with API keys.
+      - -maxmind.url=file:///testdata/GeoLite2-City-incomplete.tar.gz
+      - -routeview-v4.url=file:///testdata/RouteViewIPv4.incomplete.gz
+      - -routeview-v6.url=file:///testdata/RouteViewIPv6.incomplete.gz
+      - -siteinfo.url=file:///testdata/annotations-incomplete.json
+      # TODO: how to populate hostname?
+      - -hostname=mlab1-lga0t.mlab-sandbox.measurement-lab.org
+
+  jostler:
+    # image: measurementlab/jostler:v1.1.0
+    image: local-jostler
+    volumes:
+      - ./resultsdir:/resultsdir
+      - ./schemas:/schemas
+      - ./certs:/certs
+    network_mode: "service:ndt-server"
+    depends_on:
+      generate-schemas-ndt7:
+        condition: service_completed_successfully
+      generate-schemas-annotation2:
+        condition: service_completed_successfully
+    environment:
+      # TODO: reference service account credentials for upload to GCS.
+      - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
+    command:
+      # TODO: change node name when nodes are registered.
+      - -mlab-node-name=third-party
+      # NOTE: the ndt7 schema must already exist in the target bucket.
+      - -gcs-bucket=staging-mlab-autojoin
+      - -gcs-data-dir=autoload/v2
+      - -local-data-dir=/resultsdir
+      # TODO: update organization name.
+      - -organization=organization1
+      - -experiment=ndt
+      - -datatype=ndt7
+      - -datatype-schema-file=ndt7:/schemas/ndt7.json
+      - -datatype=annotation2
+      - -datatype-schema-file=annotation2:/schemas/annotation2.json
+      - -bundle-size-max=20971520
+      - -bundle-age-max=1h
+      - -missed-age=2h
+      - -missed-interval=5m
+      - -extensions=.json
+      - -upload-schema=false
+      - -verbose
+      - -prometheusx.listen-address=:9991
+
+  # Generate the schemas needed by jostler.
+  generate-schemas-ndt7:
+    image: measurementlab/ndt-server:v0.21.0
+    volumes:
+      - ./schemas:/schemas
+    entrypoint:
+    - /generate-schemas
+    - -ndt7=/schemas/ndt7.json
+
+  generate-schemas-annotation2:
+    image: measurementlab/uuid-annotator:v0.5.4
+    volumes:
+      - ./schemas:/schemas
+    entrypoint:
+    - /generate-schemas
+    - -ann2=/schemas/annotation2.json
+
+  # Generate the uuid needed by the ndt-server.
+  generate-uuid:
+    image: measurementlab/uuid:v1.0.0
+    volumes:
+      - ./schemas:/schemas
+    command:
+      - -filename=/schemas/uuid.prefix
