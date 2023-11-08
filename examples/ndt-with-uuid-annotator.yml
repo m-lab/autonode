@@ -91,8 +91,7 @@ services:
       - -hostname=mlab1-lga0t.mlab-sandbox.measurement-lab.org
 
   jostler:
-    # image: measurementlab/jostler:v1.1.0
-    image: local-jostler
+    image: measurementlab/jostler:v1.1.1
     volumes:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
