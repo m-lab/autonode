@@ -1,18 +1,32 @@
 version: '3.7'
 services:
+  register-node:
+    image: measurementlab/autojoin-register:latest
+    volumes:
+      - ./autonode:/autonode
+    command:
+      - -key=${API_KEY}
+      - -service=ndt
+      - -organization=mlab
+      - -iata=peg
+      - -output=/autonode
   ndt-server:
-    image: measurementlab/ndt-server:v0.21.0
+    image: measurementlab/ndt-server:latest
     volumes:
       - ./certs:/certs
       - ./html:/html
       - ./schemas:/schemas
       - ./resultsdir:/resultsdir
+      - ./autonode:/autonode
+      - ./autocert:/autocert
     cap_drop:
       - ALL
     depends_on:
       generate-schemas-ndt7:
         condition: service_completed_successfully
       generate-uuid:
+        condition: service_completed_successfully
+      register-node:
         condition: service_completed_successfully
 
     # NOTE: All containers will use the same network and IP. All ports
@@ -44,8 +58,6 @@ services:
         mode: bridge
     command:
       - -uuid-prefix-file=/schemas/uuid.prefix
-      - -cert=/certs/cert.pem
-      - -key=/certs/key.pem
       - -datadir=/resultsdir/ndt
       - -ndt7_addr=:4443
       - -ndt7_addr_cleartext=:8080
@@ -64,6 +76,8 @@ services:
       - -ndt5_addr=127.0.0.1:3002
       - -ndt5_ws_addr=127.0.0.1:3001
       - -tcpinfo.eventsocket=/schemas/events.sock
+      - -autocert.enabled=true
+      - -autocert.hostname=/autonode/hostname
 
   uuid-annotator:
     image: measurementlab/uuid-annotator:v0.5.4
