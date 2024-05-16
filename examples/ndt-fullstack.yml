@@ -5,11 +5,13 @@ services:
     volumes:
       - ./autonode:/autonode
     command:
+      - -endpoint=https://autojoin-dot-${PROJECT}.appspot.com/autojoin/v0/node/register
       - -key=${API_KEY}
       - -service=ndt
       - -organization=${ORGANIZATION}
       - -iata=${IATA}
       - -output=/autonode
+
   ndt-server:
     image: measurementlab/ndt-server:v0.22.0
     volumes:
