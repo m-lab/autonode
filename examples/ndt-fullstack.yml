@@ -8,7 +8,7 @@ services:
       - -key=${API_KEY}
       - -service=ndt
       - -organization=${ORGANIZATION}
-      - -iata=peg
+      - -iata=${IATA}
       - -output=/autonode
   ndt-server:
     image: measurementlab/ndt-server:v0.22.0
