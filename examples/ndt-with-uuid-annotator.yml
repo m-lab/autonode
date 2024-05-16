@@ -85,6 +85,7 @@ services:
       - -autocert.hostname=/autonode/hostname
 
   heartbeat:
+    # TODO: change tag once the changes are merged.
     image: measurementlab/heartbeat:sandbox-roberto-heartbeat-hostname-file
     volumes:
       - ./autonode:/autonode
@@ -126,11 +127,13 @@ services:
       - -hostname=mlab1-lga0t.mlab-sandbox.measurement-lab.org
 
   jostler:
-    image: measurementlab/jostler:v1.1.1
+    # TODO: replace tag once changes are merged
+    image: measurementlab/jostler:autojoin
     volumes:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
       - ./certs:/certs
+      - ./autonode:/autonode
     network_mode: "service:ndt-server"
     depends_on:
       generate-schemas-ndt7:
@@ -141,8 +144,7 @@ services:
       # TODO: reference service account credentials for upload to GCS.
       - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
     command:
-      # TODO: change node name when nodes are registered.
-      - -mlab-node-name=third-party
+      - -mlab-node-name-file=/autonode/hostname
       # NOTE: the ndt7 schema must already exist in the target bucket.
       - -gcs-bucket=staging-mlab-autojoin
       - -gcs-data-dir=autoload/v2
