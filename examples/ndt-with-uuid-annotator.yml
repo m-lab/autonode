@@ -33,12 +33,12 @@ services:
     # must be configured on the first service.
     ports:
       # ndt-server TLS and non-TLS ports.
-      - target: 4443
-        published: 4443
+      - target: 443
+        published: 443
         protocol: tcp
         mode: bridge
-      - target: 8080
-        published: 8080
+      - target: 80
+        published: 80
         protocol: tcp
         mode: bridge
       # ndt-server prometheus.
@@ -56,11 +56,16 @@ services:
         published: 9992
         protocol: tcp
         mode: bridge
+      # heartbeat prometheus.
+      - target: 9993
+        published: 9993
+        protocol: tcp
+        mode: bridge
     command:
       - -uuid-prefix-file=/schemas/uuid.prefix
       - -datadir=/resultsdir/ndt
-      - -ndt7_addr=:4443
-      - -ndt7_addr_cleartext=:8080
+      - -ndt7_addr=:443
+      - -ndt7_addr_cleartext=:80
       # Allow ndt7 data to be autoloaded.
       - -compress-results=false
       # TODO: confirm device name.
@@ -78,6 +83,22 @@ services:
       - -tcpinfo.eventsocket=/schemas/events.sock
       - -autocert.enabled=true
       - -autocert.hostname=/autonode/hostname
+
+  heartbeat:
+    image: measurementlab/heartbeat:sandbox-roberto-heartbeat-hostname-file
+    volumes:
+      - ./autonode:/autonode
+    depends_on:
+      ndt-server:
+        condition: service_started
+    command:
+      - -prometheusx.listen-address=:9993
+      - -experiment=ndt
+      - -hostname-file=/autonode/hostname
+      - -registration-url=file:///autonode/registration.json
+      - -heartbeat-url=wss://locate.mlab-sandbox.measurementlab.net/v2/platform/heartbeat?key=${API_KEY}
+      - -services=ndt/ndt7=ws:///ndt/v7/download,ws:///ndt/v7/upload,wss:///ndt/v7/download,wss:///ndt/v7/upload
+    network_mode: "service:ndt-server"
 
   uuid-annotator:
     image: measurementlab/uuid-annotator:v0.5.4
