@@ -70,7 +70,7 @@ services:
       - -ndt7_addr_cleartext=:80
       # Allow ndt7 data to be autoloaded.
       - -compress-results=false
-      # TODO: confirm device name.
+      # TODO(host): confirm device name.
       - -txcontroller.device=eth0
       - -txcontroller.max-rate=150000000
       - -prometheusx.listen-address=:9990
@@ -149,7 +149,7 @@ services:
     command:
       - -mlab-node-name-file=/autonode/hostname
       # NOTE: the ndt7 schema must already exist in the target bucket.
-      - -gcs-bucket=archive-mlab-autojoin
+      - -gcs-bucket=archive-${PROJECT}
       - -gcs-data-dir=autoload/v2
       - -local-data-dir=/resultsdir
       - -organization=${ORGANIZATION}
