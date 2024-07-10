@@ -78,8 +78,8 @@ services:
       - -label=type=virtual
       - -label=deployment=byos
       - -label=managed=none
-      # TODO: add helpful server location metadata labels.
-      - -label=region=TODO
+      # TODO(host): add helpful server location metadata labels.
+      #- -label=region=TODO
       # Effectively disable ndt5.
       - -ndt5_addr=127.0.0.1:3002
       - -ndt5_ws_addr=127.0.0.1:3001
@@ -116,7 +116,7 @@ services:
         condition: service_started
     network_mode: "service:ndt-server"
     environment:
-      # TODO: reference service account credentials for upload to GCS.
+      # TODO(mlab): replace service account with output from the registration endpoint.
       - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
     # NOTE: all database URLs are required.
     command:
@@ -144,7 +144,7 @@ services:
       generate-schemas-annotation2:
         condition: service_completed_successfully
     environment:
-      # TODO: reference service account credentials for upload to GCS.
+      # TODO(mlab): replace service account with output from the registration endpoint.
       - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
     command:
       - -mlab-node-name-file=/autonode/hostname
