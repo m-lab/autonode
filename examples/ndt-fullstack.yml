@@ -1,6 +1,12 @@
 version: '3.7'
 services:
   register-node:
+    # NOTE: Once the DNS GC is implemented, the registration must be
+    # periodically refreshed by the autojoin-register service or the DNS entry
+    # will be removed after its expiration time. The "oneshot" version of
+    # autojoin-register only runs once.
+    #
+    # TODO(mlab): Change this to a tagged release once the DNS GC is implemented.
     image: measurementlab/autojoin-register:oneshot
     volumes:
       - ./autonode:/autonode
