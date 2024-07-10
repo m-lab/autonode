@@ -1,0 +1,199 @@
+version: '3.7'
+services:
+  register-node:
+    # NOTE: Once the DNS GC is implemented, the registration must be
+    # periodically refreshed by the autojoin-register service or the DNS entry
+    # will be removed after its expiration time. The "oneshot" version of
+    # autojoin-register only runs once.
+    #
+    # TODO(mlab): Change this to a tagged release once the DNS GC is implemented.
+    image: measurementlab/autojoin-register:oneshot
+    volumes:
+      - ./autonode:/autonode
+    command:
+      - -endpoint=https://autojoin-dot-${PROJECT}.appspot.com/autojoin/v0/node/register
+      - -key=${API_KEY}
+      - -service=ndt
+      - -organization=${ORGANIZATION}
+      - -iata=${IATA}
+      - -output=/autonode
+
+  ndt-server:
+    image: measurementlab/ndt-server:v0.22.0
+    volumes:
+      - ./certs:/certs
+      - ./html:/html
+      - ./schemas:/schemas
+      - ./resultsdir:/resultsdir
+      - ./autonode:/autonode
+      - ./autocert:/autocert
+    cap_drop:
+      - ALL
+    depends_on:
+      generate-schemas-ndt7:
+        condition: service_completed_successfully
+      generate-uuid:
+        condition: service_completed_successfully
+      register-node:
+        condition: service_completed_successfully
+
+    # NOTE: All containers will use the same network and IP. All ports
+    # must be configured on the first service.
+    ports:
+      # ndt-server TLS and non-TLS ports.
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: bridge
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: bridge
+      # ndt-server prometheus.
+      - target: 9990
+        published: 9990
+        protocol: tcp
+        mode: bridge
+      # jostler prometheus.
+      - target: 9991
+        published: 9991
+        protocol: tcp
+        mode: bridge
+      # annotator prometheus.
+      - target: 9992
+        published: 9992
+        protocol: tcp
+        mode: bridge
+      # heartbeat prometheus.
+      - target: 9993
+        published: 9993
+        protocol: tcp
+        mode: bridge
+    command:
+      - -uuid-prefix-file=/schemas/uuid.prefix
+      - -datadir=/resultsdir/ndt
+      - -ndt7_addr=:443
+      - -ndt7_addr_cleartext=:80
+      # Allow ndt7 data to be autoloaded.
+      - -compress-results=false
+      # TODO(host): confirm device name.
+      - -txcontroller.device=eth0
+      - -txcontroller.max-rate=150000000
+      - -prometheusx.listen-address=:9990
+      # Add server metadata.
+      - -label=type=virtual
+      - -label=deployment=byos
+      - -label=managed=none
+      # TODO(host): add helpful server location metadata labels.
+      #- -label=region=TODO
+      # Effectively disable ndt5.
+      - -ndt5_addr=127.0.0.1:3002
+      - -ndt5_ws_addr=127.0.0.1:3001
+      - -tcpinfo.eventsocket=/schemas/events.sock
+      - -autocert.enabled=true
+      - -autocert.hostname=/autonode/hostname
+
+  heartbeat:
+    image: measurementlab/heartbeat:v0.14.48
+    volumes:
+      - ./autonode:/autonode
+    depends_on:
+      ndt-server:
+        condition: service_started
+    command:
+      - -prometheusx.listen-address=:9993
+      - -experiment=ndt
+      - -hostname-file=/autonode/hostname
+      - -registration-url=file:///autonode/registration.json
+      - -heartbeat-url=wss://${LOCATE_URL}/v2/platform/heartbeat?key=${API_KEY}
+      - -services=ndt/ndt7=ws:///ndt/v7/download,ws:///ndt/v7/upload,wss:///ndt/v7/download,wss:///ndt/v7/upload
+    network_mode: "service:ndt-server"
+
+  uuid-annotator:
+    image: measurementlab/uuid-annotator:v0.5.9
+    volumes:
+      - ./resultsdir:/resultsdir
+      - ./schemas:/schemas
+      - ./testdata:/testdata
+      - ./certs:/certs
+      - ./autonode:/autonode
+    depends_on:
+      ndt-server:
+        condition: service_started
+    network_mode: "service:ndt-server"
+    environment:
+      # TODO(mlab): replace service account with output from the registration endpoint.
+      - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
+    # NOTE: all database URLs are required.
+    command:
+      - -prometheusx.listen-address=:9992
+      - -datadir=/resultsdir/ndt/annotation2
+      - -tcpinfo.eventsocket=/schemas/events.sock
+      - -ipservice.sock=/schemas/uuid-annotator.sock
+      - -maxmind.url=gs://downloader-${PROJECT}/Maxmind/current/GeoLite2-City.tar.gz
+      - -routeview-v4.url=gs://downloader-${PROJECT}/RouteViewIPv4/current/routeview.pfx2as.gz
+      - -routeview-v6.url=gs://downloader-${PROJECT}/RouteViewIPv6/current/routeview.pfx2as.gz
+      - -siteinfo.url=file:///autonode/annotation.json
+      - -hostname-file=/autonode/hostname
+
+  jostler:
+    image: measurementlab/jostler:v1.1.3
+    volumes:
+      - ./resultsdir:/resultsdir
+      - ./schemas:/schemas
+      - ./certs:/certs
+      - ./autonode:/autonode
+    network_mode: "service:ndt-server"
+    depends_on:
+      generate-schemas-ndt7:
+        condition: service_completed_successfully
+      generate-schemas-annotation2:
+        condition: service_completed_successfully
+    environment:
+      # TODO(mlab): replace service account with output from the registration endpoint.
+      - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
+    command:
+      - -mlab-node-name-file=/autonode/hostname
+      # NOTE: the ndt7 schema must already exist in the target bucket.
+      - -gcs-bucket=archive-${PROJECT}
+      - -gcs-data-dir=autoload/v2
+      - -local-data-dir=/resultsdir
+      - -organization=${ORGANIZATION}
+      - -experiment=ndt
+      - -datatype=ndt7
+      - -datatype-schema-file=ndt7:/schemas/ndt7.json
+      - -datatype=annotation2
+      - -datatype-schema-file=annotation2:/schemas/annotation2.json
+      - -bundle-size-max=20971520
+      - -bundle-age-max=1h
+      - -missed-age=2h
+      - -missed-interval=5m
+      - -extensions=.json
+      - -upload-schema=false
+      - -verbose
+      - -prometheusx.listen-address=:9991
+
+  # Generate the schemas needed by jostler.
+  generate-schemas-ndt7:
+    image: measurementlab/ndt-server:v0.22.0
+    volumes:
+      - ./schemas:/schemas
+    entrypoint:
+    - /generate-schemas
+    - -ndt7=/schemas/ndt7.json
+
+  generate-schemas-annotation2:
+    image: measurementlab/uuid-annotator:v0.5.8
+    volumes:
+      - ./schemas:/schemas
+    entrypoint:
+    - /generate-schemas
+    - -ann2=/schemas/annotation2.json
+
+  # Generate the uuid needed by the ndt-server.
+  generate-uuid:
+    image: measurementlab/uuid:v1.0.0
+    volumes:
+      - ./schemas:/schemas
+    command:
+      - -filename=/schemas/uuid.prefix
