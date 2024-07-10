@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   register-node:
-    image: measurementlab/autojoin-register:latest
+    image: measurementlab/autojoin-register:oneshot
     volumes:
       - ./autonode:/autonode
     command:
@@ -99,7 +99,7 @@ services:
       - -experiment=ndt
       - -hostname-file=/autonode/hostname
       - -registration-url=file:///autonode/registration.json
-      - -heartbeat-url=wss://locate.${PROJECT}.measurementlab.net/v2/platform/heartbeat?key=${API_KEY}
+      - -heartbeat-url=wss://${LOCATE_URL}/v2/platform/heartbeat?key=${API_KEY}
       - -services=ndt/ndt7=ws:///ndt/v7/download,ws:///ndt/v7/upload,wss:///ndt/v7/download,wss:///ndt/v7/upload
     network_mode: "service:ndt-server"
 
@@ -151,7 +151,7 @@ services:
     command:
       - -mlab-node-name-file=/autonode/hostname
       # NOTE: the ndt7 schema must already exist in the target bucket.
-      - -gcs-bucket=staging-mlab-autojoin
+      - -gcs-bucket=archive-mlab-autojoin
       - -gcs-data-dir=autoload/v2
       - -local-data-dir=/resultsdir
       # TODO: update organization name.
