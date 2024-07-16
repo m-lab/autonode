@@ -7,7 +7,7 @@ services:
     # autojoin-register only runs once.
     #
     # TODO(mlab): Change this to a tagged release once the DNS GC is implemented.
-    image: measurementlab/autojoin-register:oneshot
+    image: measurementlab/autojoin-register:latest
     volumes:
       - ./autonode:/autonode
     command:
@@ -17,6 +17,12 @@ services:
       - -organization=${ORGANIZATION}
       - -iata=${IATA}
       - -output=/autonode
+      - -healthcheck-addr=:8001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/ready"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
 
   ndt-server:
     image: measurementlab/ndt-server:v0.22.0
@@ -35,7 +41,7 @@ services:
       generate-uuid:
         condition: service_completed_successfully
       register-node:
-        condition: service_completed_successfully
+        condition: service_healthy
 
     # NOTE: All containers will use the same network and IP. All ports
     # must be configured on the first service.
@@ -100,6 +106,8 @@ services:
     depends_on:
       ndt-server:
         condition: service_started
+      register-node:
+        condition: service_healthy
     command:
       - -prometheusx.listen-address=:9993
       - -experiment=ndt
@@ -120,6 +128,8 @@ services:
     depends_on:
       ndt-server:
         condition: service_started
+      register-node:
+        condition: service_healthy
     network_mode: "service:ndt-server"
     environment:
       # TODO(mlab): replace service account with output from the registration endpoint.
@@ -149,6 +159,8 @@ services:
         condition: service_completed_successfully
       generate-schemas-annotation2:
         condition: service_completed_successfully
+      register-node:
+        condition: service_healthy
     environment:
       # TODO(mlab): replace service account with output from the registration endpoint.
       - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
