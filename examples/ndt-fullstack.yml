@@ -1,10 +1,6 @@
 version: '3.7'
 services:
   register-node:
-    # NOTE: Once the DNS GC is implemented, the registration must be
-    # periodically refreshed by the autojoin-register service or the DNS entry
-    # will be removed after its expiration time. The "oneshot" version of
-    # autojoin-register only runs once.
     image: measurementlab/autojoin-register:stable
     pull_policy: always
     network_mode: host
