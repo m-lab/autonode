@@ -43,8 +43,8 @@ services:
         condition: service_completed_successfully
       register-node:
         condition: service_healthy
-    # NOTE: All containers will use the same network and IP. All ports
-    # must be configured on the first service.
+    # NOTE: All containers will use the host network. All the following ports
+    # must not be in use.
     ports:
       # ndt-server TLS and non-TLS ports.
       - target: 443
