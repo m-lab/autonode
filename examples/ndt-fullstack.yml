@@ -5,8 +5,6 @@ services:
     # periodically refreshed by the autojoin-register service or the DNS entry
     # will be removed after its expiration time. The "oneshot" version of
     # autojoin-register only runs once.
-    #
-    # TODO(mlab): Change this to a tagged release once the DNS GC is implemented.
     image: measurementlab/autojoin-register:stable
     pull_policy: always
     network_mode: host
