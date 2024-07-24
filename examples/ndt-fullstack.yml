@@ -1,13 +1,9 @@
 version: '3.7'
 services:
   register-node:
-    # NOTE: Once the DNS GC is implemented, the registration must be
-    # periodically refreshed by the autojoin-register service or the DNS entry
-    # will be removed after its expiration time. The "oneshot" version of
-    # autojoin-register only runs once.
-    #
-    # TODO(mlab): Change this to a tagged release once the DNS GC is implemented.
-    image: measurementlab/autojoin-register:latest
+    image: measurementlab/autojoin-register:stable
+    pull_policy: always
+    network_mode: host
     volumes:
       - ./autonode:/autonode
     command:
@@ -26,6 +22,7 @@ services:
 
   ndt-server:
     image: measurementlab/ndt-server:v0.22.0
+    network_mode: host
     volumes:
       - ./certs:/certs
       - ./html:/html
@@ -42,39 +39,32 @@ services:
         condition: service_completed_successfully
       register-node:
         condition: service_healthy
-
-    # NOTE: All containers will use the same network and IP. All ports
-    # must be configured on the first service.
+    # NOTE: All containers will use the host network. All the following ports
+    # must not be in use.
     ports:
       # ndt-server TLS and non-TLS ports.
       - target: 443
         published: 443
         protocol: tcp
-        mode: bridge
       - target: 80
         published: 80
         protocol: tcp
-        mode: bridge
       # ndt-server prometheus.
       - target: 9990
         published: 9990
         protocol: tcp
-        mode: bridge
       # jostler prometheus.
       - target: 9991
         published: 9991
         protocol: tcp
-        mode: bridge
       # annotator prometheus.
       - target: 9992
         published: 9992
         protocol: tcp
-        mode: bridge
       # heartbeat prometheus.
       - target: 9993
         published: 9993
         protocol: tcp
-        mode: bridge
     command:
       - -uuid-prefix-file=/schemas/uuid.prefix
       - -datadir=/resultsdir/ndt
@@ -115,7 +105,7 @@ services:
       - -registration-url=file:///autonode/registration.json
       - -heartbeat-url=wss://${LOCATE_URL}/v2/platform/heartbeat?key=${API_KEY}
       - -services=ndt/ndt7=ws:///ndt/v7/download,ws:///ndt/v7/upload,wss:///ndt/v7/download,wss:///ndt/v7/upload
-    network_mode: "service:ndt-server"
+    network_mode: host
 
   uuid-annotator:
     image: measurementlab/uuid-annotator:v0.5.9
@@ -130,7 +120,7 @@ services:
         condition: service_started
       register-node:
         condition: service_healthy
-    network_mode: "service:ndt-server"
+    network_mode: host
     environment:
       # TODO(mlab): replace service account with output from the registration endpoint.
       - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
@@ -153,7 +143,7 @@ services:
       - ./schemas:/schemas
       - ./certs:/certs
       - ./autonode:/autonode
-    network_mode: "service:ndt-server"
+    network_mode: host
     depends_on:
       generate-schemas-ndt7:
         condition: service_completed_successfully
@@ -187,6 +177,7 @@ services:
 
   # Generate the schemas needed by jostler.
   generate-schemas-ndt7:
+    network_mode: host
     image: measurementlab/ndt-server:v0.22.0
     volumes:
       - ./schemas:/schemas
@@ -195,6 +186,7 @@ services:
     - -ndt7=/schemas/ndt7.json
 
   generate-schemas-annotation2:
+    network_mode: host
     image: measurementlab/uuid-annotator:v0.5.8
     volumes:
       - ./schemas:/schemas
@@ -204,6 +196,7 @@ services:
 
   # Generate the uuid needed by the ndt-server.
   generate-uuid:
+    network_mode: host
     image: measurementlab/uuid:v1.0.0
     volumes:
       - ./schemas:/schemas
