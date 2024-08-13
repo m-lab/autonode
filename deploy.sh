@@ -33,7 +33,7 @@ gcloud iam service-accounts keys create key.json \
 SA_KEY=$(<key.json)
 
 # Copy the docker compose file to the VM.
-gcloud --project ${PROJECT} compute scp ${DOCKER_COMPOSE_FILE_PATH} ${VM_NAME}:~/docker-compose.yml --tunnel-through-iap
+gcloud --project ${PROJECT} compute scp --zone ${VM_ZONE} ${DOCKER_COMPOSE_FILE_PATH} ${VM_NAME}:~/docker-compose.yml --tunnel-through-iap
 
 # Setup script. This stops docker compose, creates the required folders, writes
 # the SA key, re-creates the .env file and restarts docker compose.
