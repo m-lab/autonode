@@ -1,0 +1,8 @@
+steps:
+# Run the deployment script. NOTE: the IATA depends on the region where the
+# VM is deployed. Our testing VM is always in us-central1, which is CBF.
+- name: gcr.io/$PROJECT_ID/gcloud-jsonnet-cbif
+  dir: '/workspace/'
+  args: [
+    '/workspace/deploy.sh $PROJECT_ID mlab cbf ${_API_KEY}'
+  ]
