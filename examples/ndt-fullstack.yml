@@ -31,10 +31,6 @@ services:
       - ./resultsdir:/resultsdir
       - ./autonode:/autonode
       - ./autocert:/autocert
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE
     depends_on:
       generate-schemas-ndt7:
         condition: service_completed_successfully
@@ -115,7 +111,6 @@ services:
     volumes:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
-      - ./testdata:/testdata
       - ./certs:/certs
       - ./autonode:/autonode
     depends_on:
