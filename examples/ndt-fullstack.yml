@@ -15,6 +15,7 @@ services:
       - -output=/autonode
       - -healthcheck-addr=:8001
       - -ports=9990,9991,9992,9993
+      - -probability=${PROBABILITY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/ready"]
       interval: 3s
@@ -72,15 +73,13 @@ services:
       # Allow ndt7 data to be autoloaded.
       - -compress-results=false
       # TODO(host): confirm device name.
-      - -txcontroller.device=eth0
-      - -txcontroller.max-rate=150000000
+      - -txcontroller.device=${INTERFACE_NAME}
+      - -txcontroller.max-rate=${INTERFACE_MAXRATE}
       - -prometheusx.listen-address=:9990
       # Add server metadata.
       - -label=type=virtual
       - -label=deployment=byos
       - -label=managed=none
-      # TODO(host): add helpful server location metadata labels.
-      #- -label=region=TODO
       # Effectively disable ndt5.
       - -ndt5_addr=127.0.0.1:3002
       - -ndt5_ws_addr=127.0.0.1:3001

@@ -11,6 +11,9 @@ VM_ZONE="us-central1-a"
 VM_NAME="autonode"
 DOCKER_COMPOSE_FILE_PATH="examples/ndt-fullstack.yml"
 LOCATE_URL="locate-dot-${PROJECT}.appspot.com"
+PROBABILITY="1.0"
+INTERFACE_NAME="eth0"
+INTERFACE_MAXRATE="150000000"
 SA_ACCOUNT="autonode@${PROJECT}.iam.gserviceaccount.com"
 
 # NOTE: We don't use the VM's default credentials because we want to simulate
@@ -52,6 +55,9 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} ${VM_NAME} --tunnel-th
     echo "PROJECT=${PROJECT}" >> .env
     echo "IATA=${IATA}" >> .env
     echo "LOCATE_URL=${LOCATE_URL}" >> .env
+    echo "PROBABILITY=${PROBABILITY}" >> .env
+    echo "INTERFACE_NAME=eth0" >> .env
+    echo "INTERFACE_MAXRATE=150000000" >> .env
 
     # Write service account key to the expected file.
     echo "${SA_KEY}" > certs/service-account-autojoin.json
