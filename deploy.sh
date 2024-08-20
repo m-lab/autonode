@@ -4,15 +4,15 @@ set -euxo pipefail
 USAGE="$0 <project> <organization> <iata> <api-key>"
 PROJECT=${1:?Please provide the GCP project (e.g., mlab-sandbox): ${USAGE}}
 ORG=${2:?Please provide the organization (e.g., mlab): ${USAGE}}
-IATA=${3:?Please provide the IATA code (e.g., lga): ${USAGE}}
-API_KEY=${4:?Please provide the API key: ${USAGE}}
+API_KEY=${3:?Please provide the API key: ${USAGE}}
 
+IATA="cbf"
 VM_ZONE="us-central1-a"
 VM_NAME="autonode"
 DOCKER_COMPOSE_FILE_PATH="examples/ndt-fullstack.yml"
 LOCATE_URL="locate-dot-${PROJECT}.appspot.com"
 PROBABILITY="1.0"
-INTERFACE_NAME="eth0"
+INTERFACE_NAME="ens4"
 INTERFACE_MAXRATE="150000000"
 SA_ACCOUNT="autonode@${PROJECT}.iam.gserviceaccount.com"
 
@@ -56,8 +56,8 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} ${VM_NAME} --tunnel-th
     echo "IATA=${IATA}" >> .env
     echo "LOCATE_URL=${LOCATE_URL}" >> .env
     echo "PROBABILITY=${PROBABILITY}" >> .env
-    echo "INTERFACE_NAME=eth0" >> .env
-    echo "INTERFACE_MAXRATE=150000000" >> .env
+    echo "INTERFACE_NAME=${INTERFACE_NAME}" >> .env
+    echo "INTERFACE_MAXRATE=${INTERFACE_MAXRATE}" >> .env
 
     # Write service account key to the expected file.
     echo "${SA_KEY}" > certs/service-account-autojoin.json
