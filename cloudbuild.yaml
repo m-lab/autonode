@@ -1,6 +1,6 @@
 steps:
 # Run the deployment script. NOTE: the IATA depends on the region where the
-# VM is deployed. Our testing VM is always in us-central1, which is CBF.
+# VM is deployed. Our testing VM is always in us-central1, which is OMA.
 - name: us-central1-docker.pkg.dev/$PROJECT_ID/build-images/gcloud-jsonnet-cbif:1.1
   dir: '/workspace/'
   args: [

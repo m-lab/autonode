@@ -7,7 +7,7 @@ ORG=${2:?Please provide the organization (e.g., mlab): ${USAGE}}
 API_KEY=${3:?Please provide the API key: ${USAGE}}
 PROBABILITY=${4:?Please provide the probability: ${USAGE}}
 
-IATA="cbf"
+IATA="oma"
 VM_ZONE="us-central1-a"
 VM_NAME="autonode"
 DOCKER_COMPOSE_FILE_PATH="examples/ndt-fullstack.yml"
