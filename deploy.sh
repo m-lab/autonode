@@ -24,7 +24,8 @@ SA_ACCOUNT="autonode@${PROJECT}.iam.gserviceaccount.com"
 # Delete any existing keys for the autonode SA. Ignore failures due to
 # system-managed keys that cannot be deleted.
 for key in $(gcloud iam service-accounts keys list \
-    --iam-account=${SA_ACCOUNT} | \
+    --iam-account=${SA_ACCOUNT} \
+    --created-before=$(date --iso-8601=seconds -d "10 mins ago") | \
     cut -f1 -d " " | tail -n +2)
 do
     gcloud iam service-accounts keys delete --iam-account=${SA_ACCOUNT} ${key} -q || true
