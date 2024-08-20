@@ -1,20 +1,25 @@
 #!/bin/bash
 set -euxo pipefail
 
-USAGE="$0 <project> <organization> <iata> <api-key>"
+USAGE="$0 <project> <organization> <api-key> <probability>"
 PROJECT=${1:?Please provide the GCP project (e.g., mlab-sandbox): ${USAGE}}
 ORG=${2:?Please provide the organization (e.g., mlab): ${USAGE}}
 API_KEY=${3:?Please provide the API key: ${USAGE}}
+PROBABILITY=${4:?Please provide the probability: ${USAGE}}
 
-IATA="cbf"
+IATA="oma"
 VM_ZONE="us-central1-a"
 VM_NAME="autonode"
 DOCKER_COMPOSE_FILE_PATH="examples/ndt-fullstack.yml"
-LOCATE_URL="locate-dot-${PROJECT}.appspot.com"
-PROBABILITY="1.0"
 INTERFACE_NAME="ens4"
 INTERFACE_MAXRATE="150000000"
 SA_ACCOUNT="autonode@${PROJECT}.iam.gserviceaccount.com"
+
+LOCATE_URL="locate-dot-${PROJECT}.appspot.com"
+if [ "$PROJECT" = "mlab-autojoin" ]; then
+  LOCATE_URL="locate.measurementlab.net"
+fi
+
 
 # NOTE: We don't use the VM's default credentials because we want to simulate
 # how a non-GCP user would set up an autonode. Instead, we generate a temporary
@@ -61,7 +66,7 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} ${VM_NAME} --tunnel-th
     echo "INTERFACE_MAXRATE=${INTERFACE_MAXRATE}" >> .env
 
     # Write service account key to the expected file.
-    echo "${SA_KEY}" > certs/service-account-autojoin.json
+    echo '${SA_KEY}' > certs/service-account-autojoin.json
 
     # Start the docker compose again.
     docker compose -f docker-compose.yml up -d
