@@ -1,16 +1,16 @@
 #!/bin/bash
 set -euxo pipefail
 
-USAGE="$0 <project> <organization> <api-key>"
+USAGE="$0 <project> <organization> <api-key> <probability>"
 PROJECT=${1:?Please provide the GCP project (e.g., mlab-sandbox): ${USAGE}}
 ORG=${2:?Please provide the organization (e.g., mlab): ${USAGE}}
 API_KEY=${3:?Please provide the API key: ${USAGE}}
+PROBABILITY=${4:?Please provide the probability: ${USAGE}}
 
 IATA="cbf"
 VM_ZONE="us-central1-a"
 VM_NAME="autonode"
 DOCKER_COMPOSE_FILE_PATH="examples/ndt-fullstack.yml"
-PROBABILITY="1.0"
 INTERFACE_NAME="ens4"
 INTERFACE_MAXRATE="150000000"
 SA_ACCOUNT="autonode@${PROJECT}.iam.gserviceaccount.com"

@@ -4,5 +4,5 @@ steps:
 - name: gcr.io/$PROJECT_ID/gcloud-jsonnet-cbif:1.1
   dir: '/workspace/'
   args: [
-    '/workspace/deploy.sh $PROJECT_ID mlab ${_API_KEY}'
+    '/workspace/deploy.sh $PROJECT_ID mlab ${_API_KEY} ${_PROBABILITY}'
   ]
