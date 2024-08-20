@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euxo pipefail
 
-USAGE="$0 <project> <organization> <iata> <api-key>"
+USAGE="$0 <project> <organization> <api-key>"
 PROJECT=${1:?Please provide the GCP project (e.g., mlab-sandbox): ${USAGE}}
 ORG=${2:?Please provide the organization (e.g., mlab): ${USAGE}}
 API_KEY=${3:?Please provide the API key: ${USAGE}}
