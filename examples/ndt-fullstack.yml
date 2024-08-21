@@ -16,6 +16,8 @@ services:
       - -healthcheck-addr=:8001
       - -ports=9990,9991,9992,9993
       - -probability=${PROBABILITY}
+      - -ipv4=${IPV4}
+      - -ipv6=${IPV6}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/ready"]
       interval: 3s

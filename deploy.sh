@@ -54,6 +54,10 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} ${VM_NAME} --tunnel-th
     # Stop the docker compose if it's running.
     docker compose -f docker-compose.yml down
 
+    # Find the external v4 and v6 addresses for this machine.
+    IPV4=\$(curl -s ipinfo.io/ip)
+    IPV6=\$(curl -s -6 v6.ipinfo.io/ip)
+
     # Create .env file
     rm .env || true
     echo "API_KEY=${API_KEY}" >> .env
@@ -64,6 +68,8 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} ${VM_NAME} --tunnel-th
     echo "PROBABILITY=${PROBABILITY}" >> .env
     echo "INTERFACE_NAME=${INTERFACE_NAME}" >> .env
     echo "INTERFACE_MAXRATE=${INTERFACE_MAXRATE}" >> .env
+    echo "IPV4=\$IPV4" >> .env
+    echo "IPV6=\$IPV6" >> .env
 
     # Write service account key to the expected file.
     echo '${SA_KEY}' > certs/service-account-autojoin.json
