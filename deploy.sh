@@ -57,7 +57,7 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} ${VM_NAME} --tunnel-th
     # Find the external v4 and v6 addresses for this machine.
     IPV4=\$(curl -s ipinfo.io/ip)
     IPV6=\$(curl -s -6 v6.ipinfo.io/ip)
-    
+
     # Create .env file
     rm .env || true
     echo "API_KEY=${API_KEY}" >> .env
