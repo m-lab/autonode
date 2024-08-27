@@ -27,8 +27,7 @@ INTERFACE_NAME=
 # INTERFACE_MAXRATE is the rate (in bit/s) after which the NDT server will
 # refuse new connections. Set it according to this node's uplink.
 # For example: INTERFACE_MAXRATE=150000000
-
-INTERFACE_MAXRATE=150000000
+INTERFACE_MAXRATE=
 
 # IPV4 is the external IPv4 address that this node will be reachable at.
 # If left empty, the v4 address used to connect to Autojoin API by the register
