@@ -21,7 +21,7 @@ IATA=
 # be selected as any other M-Lab node in the same metro. Default is 0.1 (10%).
 PROBABILITY=0.1
 
-# INTERFACE_NAME is the name of the interface to apply MAXRATE to.
+# INTERFACE_NAME is the name of the interface to apply INTERFACE_MAXRATE to.
 INTERFACE_NAME=
 
 # INTERFACE_MAXRATE is the rate (in bit/s) after which the NDT server will
