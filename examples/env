@@ -3,7 +3,7 @@
 # Change the following settings according to your environment.
 # 
 # In addition to this, you will need a service account key file (provided by
-# M-Lab). This service account's path is expected to be placed, relative to the
+# M-Lab). This service account key is expected to be placed, relative to the
 # ndt-fullstack YAML file's path in certs/service-account-autojoin.json
 
 # ORGANIZATION is the organization name assigned by M-Lab to your deployment.
