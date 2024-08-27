@@ -17,7 +17,8 @@ IATA=
 
 # PROBABILITY is the probability that this node will be selected by M-Lab's
 # load balancer. Tweak it according to how much traffic this node can handle.
-# Default is 0.1 (10%).
+# A probability of 1 (100%) means that this node will be equally as likely to
+# be selected as any other M-Lab node in the same metro. Default is 0.1 (10%).
 PROBABILITY=0.1
 
 # INTERFACE_NAME is the name of the interface to apply MAXRATE to.
