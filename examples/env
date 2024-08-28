@@ -1,10 +1,25 @@
 # This is an example .env file for the ndt-fullstack docker compose file.
-#
-# Change the following settings according to your environment.
 # 
-# In addition to this, you will need a service account key file (provided by
-# M-Lab). This service account key is expected to be placed, relative to the
-# ndt-fullstack YAML file's path, in certs/service-account-autojoin.json
+# ### External directories ###
+# 
+# ./html: Content served by ndt-server. Can be used to provide your own
+#   speedtest UI.
+#
+# ./certs: Contains the service account key file. This key file (provided by
+#   M-Lab) is expected to be placed at certs/service-account-autojoin.json.
+#
+# ./resultsdir: Contains the test results waiting to be uploaded.
+#
+# ./schemas: Contains the JSON schemas for the test results.
+#
+# ./autocert: Contains the automatically-generated LetsEncrypt TLS certificates
+#   so that they can be reused across docker compose restarts.
+#
+# ./autonode: Contains the configuration files for the NDT server and all the
+#   sidecar containers, provided by the Autojoin API on node registration.
+
+# ### Configuration variables ###
+# Change the following settings according to your environment.
 
 # ORGANIZATION is the organization name assigned by M-Lab to your deployment.
 ORGANIZATION=
@@ -12,7 +27,10 @@ ORGANIZATION=
 # API_KEY is the API key provided by M-Lab.
 API_KEY=
 
-# IATA is the IATA code of the nearest international airport.
+# IATA is the 3-letter, lowercase IATA code of the nearest international
+# airport. You can use the following service to estimate it, providing your
+# server's latitude and longitude:
+# https://autojoin-dot-mlab-autojoin.appspot.com/autojoin/v0/lookup?lat=&lon=
 IATA=
 
 # PROBABILITY is the probability that this node will be selected by M-Lab's
@@ -26,7 +44,9 @@ INTERFACE_NAME=
 
 # INTERFACE_MAXRATE is the rate (in bit/s) after which the NDT server will
 # refuse new connections. Set it according to this node's uplink.
-# For example: INTERFACE_MAXRATE=150000000
+# Recommended values:
+# - 1G: INTERFACE_MAXRATE=150000000
+# - 10G: INTERFACE_MAXRATE=7000000000
 INTERFACE_MAXRATE=
 
 # IPV4 is the external IPv4 address that this node will be reachable at.
@@ -38,9 +58,9 @@ IPV4=
 # If you want you node to be accessible over IPv6, this must be set.
 IPV6=
 
-######################
-# Do NOT change these.
-######################
+
+# ### Static configuration variables ###
+# ###    Do NOT change these.        ###
 
 PROJECT=mlab-autojoin
 LOCATE_URL=locate.measurementlab.net
