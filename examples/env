@@ -76,3 +76,4 @@ IPV6=
 
 PROJECT=mlab-autojoin
 LOCATE_URL=locate.measurementlab.net
+DOCKER_TAG=stable

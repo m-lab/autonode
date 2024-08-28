@@ -1,11 +1,12 @@
 #!/bin/bash
 set -euxo pipefail
 
-USAGE="$0 <project> <organization> <api-key> <probability>"
+USAGE="$0 <project> <docker-tag> <organization> <api-key> <probability>"
 PROJECT=${1:?Please provide the GCP project (e.g., mlab-sandbox): ${USAGE}}
-ORG=${2:?Please provide the organization (e.g., mlab): ${USAGE}}
-API_KEY=${3:?Please provide the API key: ${USAGE}}
-PROBABILITY=${4:?Please provide the probability: ${USAGE}}
+DOCKER_TAG=${2:?Please provide the Docker tag to deploy: ${USAGE}}
+ORG=${3:?Please provide the organization (e.g., mlab): ${USAGE}}
+API_KEY=${4:?Please provide the API key: ${USAGE}}
+PROBABILITY=${5:?Please provide the probability: ${USAGE}}
 
 IATA="oma"
 VM_ZONE="us-central1-a"
@@ -60,6 +61,7 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} ${VM_NAME} --tunnel-th
 
     # Create .env file
     rm .env || true
+    echo "DOCKER_TAG=${DOCKER_TAG}" >> .env
     echo "API_KEY=${API_KEY}" >> .env
     echo "ORGANIZATION=${ORG}" >> .env
     echo "PROJECT=${PROJECT}" >> .env
