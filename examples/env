@@ -1,12 +1,19 @@
 # This is an example .env file for the ndt-fullstack docker compose file.
 # 
 # ### External directories ###
+#
+# These folders are mounted by the various containers in the fullstack NDT
+# Docker compose. If they do not exist, they are created the first time the
+# containers start, owned by the docker daemon's user (generally root).
+# The only folder that MUST exist and contain the service account key file
+# (see below) is ./certs. This file must also be readable by Docker's user.
 # 
 # ./html: Content served by ndt-server. Can be used to provide your own
 #   speedtest UI.
 #
 # ./certs: Contains the service account key file. This key file (provided by
 #   M-Lab) is expected to be placed at certs/service-account-autojoin.json.
+#   This file must be present for the docker compose to work.
 #
 # ./resultsdir: Contains the test results waiting to be uploaded.
 #
