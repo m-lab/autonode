@@ -46,10 +46,6 @@ services:
       - -txcontroller.device=eth0
       - -txcontroller.max-rate=150000000
       - -prometheusx.listen-address=:9990
-      # Add server metadata.
-      - -label=type=virtual
-      - -label=deployment=byos
-      - -label=managed=none
       # Effectively disable ndt5.
       - -ndt5_addr=127.0.0.1:3002
       - -ndt5_ws_addr=127.0.0.1:3001
