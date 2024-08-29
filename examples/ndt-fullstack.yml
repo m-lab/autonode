@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   register-node:
-    image: measurementlab/autojoin-register:stable
+    image: measurementlab/autojoin-register:${DOCKER_TAG}
     pull_policy: always
     network_mode: host
     volumes:
