@@ -16,7 +16,7 @@ If the localstack configuration runs on a publicly accessible IP, then others co
 
 See: [github.com/m-lab/ndt-server/README.md](https://github.com/m-lab/ndt-server?tab=readme-ov-file#clients) for other available clients.
 
-## Full Stack
+## Full Stack (beta)
 
 A fullstack deployment requires registration with M-Lab, an assigned
 organization name, and API keys and several other locally determined parameters.
