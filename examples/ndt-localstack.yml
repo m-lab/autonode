@@ -18,8 +18,8 @@ services:
       - target: 443
         published: 443
         protocol: tcp
-      - target: 80
-        published: 80
+      - target: 8080
+        published: 8080
         protocol: tcp
       # ndt-server prometheus.
       - target: 9990
@@ -40,7 +40,7 @@ services:
     command:
       - -uuid-prefix-file=/schemas/uuid.prefix
       - -datadir=/resultsdir/ndt
-      - -ndt7_addr_cleartext=:80
+      - -ndt7_addr_cleartext=:8080
       # Allow ndt7 data to be autoloaded.
       - -compress-results=false
       - -txcontroller.device=eth0
