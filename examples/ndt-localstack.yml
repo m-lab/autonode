@@ -38,7 +38,6 @@ services:
         published: 9993
         protocol: tcp
     command:
-      - -uuid-prefix-file=/schemas/uuid.prefix
       - -datadir=/resultsdir/ndt
       - -ndt7_addr_cleartext=:8080
       # Allow ndt7 data to be autoloaded.
