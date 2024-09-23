@@ -43,6 +43,7 @@ services:
         condition: service_completed_successfully
       register-node:
         condition: service_healthy
+    restart: always
     # NOTE: All containers will use the host network. All the following ports
     # must not be in use.
     ports:
@@ -102,6 +103,7 @@ services:
         condition: service_started
       register-node:
         condition: service_healthy
+    restart: always
     command:
       - -prometheusx.listen-address=:9993
       - -experiment=ndt
@@ -127,6 +129,7 @@ services:
     environment:
       # TODO(mlab): replace service account with output from the registration endpoint.
       - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
+    restart: always
     # NOTE: all database URLs are required.
     command:
       - -prometheusx.listen-address=:9992
@@ -157,6 +160,7 @@ services:
     environment:
       # TODO(mlab): replace service account with output from the registration endpoint.
       - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
+    restart: always
     command:
       - -mlab-node-name-file=/autonode/hostname
       # NOTE: the ndt7 schema must already exist in the target bucket.
