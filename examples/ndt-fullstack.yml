@@ -1,6 +1,12 @@
 version: '3.7'
 services:
+  # Register this node with the Autojoin API. A successful registration will
+  # assign a DNS name for this node based on the public IPs, their ASN,
+  # organiztion, and IATA code. As well, Register distributes other credentials
+  # needed to upload and archive measurement data. The register command contacts
+  # the Autojoin API every hour.
   register-node:
+    # NOTE: register should not be restarted on failure.
     image: measurementlab/autojoin-register:${DOCKER_TAG}
     pull_policy: always
     network_mode: host
@@ -24,6 +30,7 @@ services:
       timeout: 5s
       retries: 10
 
+  # ndt-server is the public facing measurement service. Only ndt7 is enabled.
   ndt-server:
     image: measurementlab/ndt-server:v0.22.0
     network_mode: host
@@ -94,6 +101,9 @@ services:
       - -autocert.enabled=true
       - -autocert.hostname=/autonode/hostname
 
+  # heartbeat reports health and liveness messages to M-Lab's Locate API every
+  # 10sec. The Locate API is responsible for directing clients to nearby healthy
+  # servers.
   heartbeat:
     image: measurementlab/heartbeat:v0.14.48
     volumes:
@@ -113,6 +123,8 @@ services:
       - -services=ndt/ndt7=ws:///ndt/v7/download,ws:///ndt/v7/upload,wss:///ndt/v7/download,wss:///ndt/v7/upload
     network_mode: host
 
+  # uuid-annotator records network and geographic annotations based on the
+  # client and server IP so each NDT measurement is annotated in BigQuery.
   uuid-annotator:
     image: measurementlab/uuid-annotator:v0.5.9
     volumes:
@@ -142,6 +154,10 @@ services:
       - -siteinfo.url=file:///autonode/annotation.json
       - -hostname-file=/autonode/hostname
 
+  # jostler archives the raw data from ndt-server and the uuid-annotator into
+  # JSONL "bundles". These bundles are uploaded to GCS using credentials from
+  # register. Jostler depends on the local schemas being up to date or backward
+  # compatible with upstream schemas.
   jostler:
     image: measurementlab/jostler:v1.1.3
     volumes:
@@ -160,7 +176,7 @@ services:
     environment:
       # TODO(mlab): replace service account with output from the registration endpoint.
       - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
-    restart: always
+    # NOTE: jostler should not restart on exit.
     command:
       - -mlab-node-name-file=/autonode/hostname
       # NOTE: the ndt7 schema must already exist in the target bucket.
@@ -182,7 +198,8 @@ services:
       - -verbose
       - -prometheusx.listen-address=:9991
 
-  # Generate the schemas needed by jostler.
+  # Generate the schemas needed by jostler to assess that the data is backward
+  # compatible with upstream schemas and safe to upload.
   generate-schemas-ndt7:
     network_mode: host
     image: measurementlab/ndt-server:v0.22.0
@@ -201,7 +218,7 @@ services:
     - /generate-schemas
     - -ann2=/schemas/annotation2.json
 
-  # Generate the uuid needed by the ndt-server.
+  # Generate the uuid prefix needed by the ndt-server and uuid-annotator.
   generate-uuid:
     network_mode: host
     image: measurementlab/uuid:v1.0.0
