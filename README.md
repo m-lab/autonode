@@ -2,7 +2,7 @@
 
 | Autonode Register and Measure |
 | ----------------------------- |
-| ![register-and-measure](static/autonode-register-and-measure.png) |
+| ![register-and-measure](static/autonode-register-and-measure.svg) |
 
 After a hosting organization registers with M-Lab, their autonodes will:
 
