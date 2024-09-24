@@ -4,9 +4,11 @@
 | ----------------------------- |
 | ![register-and-measure](static/autonode-register-and-measure.png) |
 
-1. Register with Autojoin API
-2. Distribute credentials & metadata
-3. Report node health to Locate API
-4. Clients run NDT tests
-5. Measurements are archived
-6. And, published to BigQuery
+After a hosting organization registers with M-Lab, their autonodes will:
+
+1. Register with the Autojoin API
+2. Distribute credentials & metadata to local services
+3. Report node health to the Locate API
+4. Clients run NDT tests targeting this node
+5. NDT measurements are archived
+6. NDT measurements published to BigQuery
