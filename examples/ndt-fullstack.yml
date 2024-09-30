@@ -32,8 +32,7 @@ services:
 
   # ndt-server is the public facing measurement service. Only ndt7 is enabled.
   ndt-server:
-    # TODO(soltesz): update before review v0.22.0+
-    image: measurementlab/ndt-server:sandbox-soltesz-stringfile-flags
+    image: measurementlab/ndt-server:v0.23.0
     network_mode: host
     cap_add:
       - NET_BIND_SERVICE
@@ -146,8 +145,7 @@ services:
         condition: service_healthy
     network_mode: host
     environment:
-      # TODO(mlab): replace service account with output from the registration endpoint.
-      - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/autonode/service-account-autojoin.json
     restart: always
     # NOTE: all database URLs are required.
     command:
@@ -181,8 +179,7 @@ services:
       register-node:
         condition: service_healthy
     environment:
-      # TODO(mlab): replace service account with output from the registration endpoint.
-      - GOOGLE_APPLICATION_CREDENTIALS=/certs/service-account-autojoin.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/autonode/service-account-autojoin.json
     # NOTE: jostler should not restart on exit.
     command:
       - -mlab-node-name-file=/autonode/hostname
