@@ -77,6 +77,10 @@ services:
       - target: 9993
         published: 9993
         protocol: tcp
+      # traceroute-caller prometheus.
+      - target: 9994
+        published: 9994
+        protocol: tcp
     command:
       - -uuid-prefix-file=/schemas/uuid.prefix
       - -datadir=/resultsdir/ndt
@@ -202,6 +206,28 @@ services:
       - -verbose
       - -prometheusx.listen-address=:9991
 
+  traceroute-caller:
+    # TODO(soltesz): update image version.
+    image: measurementlab/traceroute-caller:sandbox-soltesz-autoloadable
+    volumes:
+      - ./resultsdir:/resultsdir
+      - ./schemas:/schemas
+    #  - ./certs:/certs
+    #  - ./autonode:/autonode
+    command:
+      - -uuid-prefix-file=/schemas/uuid.prefix
+      - -prometheusx.listen-address=:9994
+      - -traceroute-output=/resultsdir/ndt/scamper2
+      - -hopannotation-output=/resultsdir/ndt/hopannotation1
+      - -tcpinfo.eventsocket=/schemas/events.sock
+      - -IPCacheTimeout=10m
+      - -IPCacheUpdatePeriod=1m
+      - -scamper.timeout=30m
+      - -scamper.tracelb-W=15
+      - -ipservice.sock=/schemas/uuid-annotator.sock
+      - -anonymize.ip=none
+      - -scamper.trace-type=regular
+
   # Generate the schemas needed by jostler to assess that the data is backward
   # compatible with upstream schemas and safe to upload.
   generate-schemas-ndt7:
@@ -221,6 +247,17 @@ services:
     entrypoint:
     - /generate-schemas
     - -ann2=/schemas/annotation2.json
+
+  generate-schemas-tracreoute:
+    network_mode: host
+    # TODO(soltesz): update image version.
+    image: measurementlab/traceroute-caller:sandbox-soltesz-autoloadable
+    volumes:
+      - ./schemas:/schemas
+    entrypoint:
+    - /generate-schemas
+    - -scamper2=/schemas/scamper2.json
+    - -hopannotation1=/schemas/hopannotation1.json
 
   # Generate the uuid prefix needed by the ndt-server and uuid-annotator.
   generate-uuid:
