@@ -223,7 +223,8 @@ services:
       - -IPCacheTimeout=10m
       - -IPCacheUpdatePeriod=1m
       - -scamper.timeout=30m
-      - -scamper.tracelb-W=15
+      - -scamper.waitprobe=15
+      - -scamper.ptr=true
       - -ipservice.sock=/schemas/uuid-annotator.sock
       - -anonymize.ip=none
       - -scamper.trace-type=regular
