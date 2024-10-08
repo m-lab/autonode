@@ -215,7 +215,6 @@ services:
     #  - ./certs:/certs
     #  - ./autonode:/autonode
     command:
-      - -uuid-prefix-file=/schemas/uuid.prefix
       - -prometheusx.listen-address=:9994
       - -traceroute-output=/resultsdir/ndt/scamper2
       - -hopannotation-output=/resultsdir/ndt/hopannotation1
@@ -228,6 +227,7 @@ services:
       - -ipservice.sock=/schemas/uuid-annotator.sock
       - -anonymize.ip=none
       - -scamper.trace-type=regular
+      - -output.format=json
 
   # Generate the schemas needed by jostler to assess that the data is backward
   # compatible with upstream schemas and safe to upload.
