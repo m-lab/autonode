@@ -111,7 +111,7 @@ services:
   # 10sec. The Locate API is responsible for directing clients to nearby healthy
   # servers.
   heartbeat:
-    image: measurementlab/heartbeat:v0.14.48
+    image: measurementlab/heartbeat:v0.15.1
     volumes:
       - ./autonode:/autonode
     depends_on:
@@ -123,7 +123,7 @@ services:
     command:
       - -prometheusx.listen-address=:9993
       - -experiment=ndt
-      - -hostname-file=/autonode/hostname
+      - -hostname=@/autonode/hostname
       - -registration-url=file:///autonode/registration.json
       - -heartbeat-url=wss://${LOCATE_URL}/v2/platform/heartbeat?key=${API_KEY}
       - -services=ndt/ndt7=ws:///ndt/v7/download,ws:///ndt/v7/upload,wss:///ndt/v7/download,wss:///ndt/v7/upload
@@ -132,7 +132,7 @@ services:
   # uuid-annotator records network and geographic annotations based on the
   # client and server IP so each NDT measurement is annotated in BigQuery.
   uuid-annotator:
-    image: measurementlab/uuid-annotator:v0.5.9
+    image: measurementlab/uuid-annotator:v0.5.10
     volumes:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
@@ -157,14 +157,14 @@ services:
       - -routeview-v4.url=gs://downloader-${PROJECT}/RouteViewIPv4/current/routeview.pfx2as.gz
       - -routeview-v6.url=gs://downloader-${PROJECT}/RouteViewIPv6/current/routeview.pfx2as.gz
       - -siteinfo.url=file:///autonode/annotation.json
-      - -hostname-file=/autonode/hostname
+      - -hostname=@/autonode/hostname
 
   # jostler archives the raw data from ndt-server and the uuid-annotator into
   # JSONL "bundles". These bundles are uploaded to GCS using credentials from
   # register. Jostler depends on the local schemas being up to date or backward
   # compatible with upstream schemas.
   jostler:
-    image: measurementlab/jostler:v1.1.3
+    image: measurementlab/jostler:v1.1.4
     volumes:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
@@ -182,7 +182,7 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/autonode/service-account-autojoin.json
     # NOTE: jostler should not restart on exit.
     command:
-      - -mlab-node-name-file=/autonode/hostname
+      - -mlab-node-name=@/autonode/hostname
       # NOTE: the ndt7 schema must already exist in the target bucket.
       - -gcs-bucket=archive-${PROJECT}
       - -gcs-data-dir=autoload/v2
