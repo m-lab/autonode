@@ -223,6 +223,8 @@ services:
         condition: service_completed_successfully
       register-node:
         condition: service_healthy
+      ndt-server:
+        condition: service_healthy
     restart: always
     command:
       - -prometheusx.listen-address=:9994

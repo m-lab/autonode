@@ -23,10 +23,11 @@ fi
 
 if test -f ${DOCKER_COMPOSE_FILE_PATH}; then
   # NOTE: we will treat the M-Lab deployment as authoritative. New schemas will be
-  # deployed to GCS.  NOTE: backward compatible schema updates will not impact
-  # other organization deployments. However, if there are breaking changes, all
-  # autonode deployments that are pinned to earlier schemas will break.
-  sed -i -e 's/-upload-schema=false/-upload-schema=true/' examples/ndt-fullstack.yml
+  # deployed to GCS.
+  # NOTE: backward compatible schema updates will not impact other organization
+  # deployments. However, if there are breaking changes, all autonode deployments
+  # that are pinned to earlier schemas will break.
+  sed -i -e 's/-upload-schema=false/-upload-schema=true/' ${DOCKER_COMPOSE_FILE_PATH}
 fi
 
 # NOTE: We don't use the VM's default credentials because we want to simulate
