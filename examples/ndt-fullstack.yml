@@ -110,6 +110,11 @@ services:
     configs:
       - source: locate-verify-key
         target: /locate/verify.pub
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
 
   # heartbeat reports health and liveness messages to M-Lab's Locate API every
   # 10sec. The Locate API is responsible for directing clients to nearby healthy
