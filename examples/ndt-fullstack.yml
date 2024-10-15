@@ -221,6 +221,7 @@ services:
     volumes:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
+      - ./metadata:/metadata
     #  - ./certs:/certs
     #  - ./autonode:/autonode
     depends_on:
@@ -231,6 +232,11 @@ services:
       ndt-server:
         condition: service_healthy
     restart: always
+    configs:
+      - source: metadata-external-ipv6
+        target: /metadata/external-ipv6
+      - source: metadata-external-ip
+        target: /metadata/external-ip
     command:
       - -prometheusx.listen-address=:9994
       - -traceroute-output=/resultsdir/ndt/scamper2
@@ -290,3 +296,9 @@ configs:
   locate-verify-key:
     content: |
       {"use":"sig","kty":"OKP","kid":"locate_20200409","crv":"Ed25519","alg":"EdDSA","x":"1tS1d-dd2B-VRBTWzOaq7zUngKDyV409K-o42LN2nx8"}
+  metadata-external-ip:
+    content: |
+      ${IPV4}
+  metadata-external-ipv6:
+    content: |
+      ${IPV6}
