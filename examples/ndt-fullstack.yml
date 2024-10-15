@@ -232,6 +232,7 @@ services:
         condition: service_healthy
       ndt-server:
         condition: service_healthy
+    pull_policy: always
     restart: always
     configs:
       - source: metadata-external-ipv6
