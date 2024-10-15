@@ -218,6 +218,7 @@ services:
   traceroute-caller:
     # TODO(soltesz): update image version.
     image: measurementlab/traceroute-caller:sandbox-soltesz-autoloadable
+    network_mode: host
     volumes:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
