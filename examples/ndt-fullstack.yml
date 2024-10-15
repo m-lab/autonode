@@ -197,6 +197,10 @@ services:
       - -datatype-schema-file=ndt7:/schemas/ndt7.json
       - -datatype=annotation2
       - -datatype-schema-file=annotation2:/schemas/annotation2.json
+      - -datatype=scamper2
+      - -datatype-schema-file=scamper2:/schemas/scamper2.json
+      - -datatype=hopannotation1
+      - -datatype-schema-file=hopannotation1:/schemas/hopannotation1.json
       - -bundle-size-max=20971520
       - -bundle-age-max=1h
       - -missed-age=2h
