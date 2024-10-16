@@ -223,8 +223,6 @@ services:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
       - ./metadata:/metadata
-    #  - ./certs:/certs
-    #  - ./autonode:/autonode
     depends_on:
       generate-schemas-tracreoute:
         condition: service_completed_successfully
