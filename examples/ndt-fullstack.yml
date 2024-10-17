@@ -216,8 +216,7 @@ services:
       - -prometheusx.listen-address=:9991
 
   traceroute-caller:
-    # TODO(soltesz): update image version.
-    image: measurementlab/traceroute-caller:sandbox-soltesz-autoloadable
+    image: measurementlab/traceroute-caller:v0.12.0
     network_mode: host
     volumes:
       - ./resultsdir:/resultsdir
@@ -274,8 +273,7 @@ services:
 
   generate-schemas-tracreoute:
     network_mode: host
-    # TODO(soltesz): update image version.
-    image: measurementlab/traceroute-caller:sandbox-soltesz-autoloadable
+    image: measurementlab/traceroute-caller:v0.12.0
     volumes:
       - ./schemas:/schemas
     entrypoint:
