@@ -1,5 +1,5 @@
 # This is an example .env file for the ndt-fullstack docker compose file.
-# 
+#
 # ### External directories ###
 #
 # These folders are mounted by the various containers in the fullstack NDT
@@ -8,7 +8,7 @@
 #
 # The only folder that MUST exist and contain the service account key file
 # (see below) is ./certs. This file must also be readable by Docker's user.
-# 
+#
 # All other folders are created and managed by the containers in the Docker
 # compose.
 #
@@ -29,6 +29,9 @@
 #
 # ./autonode: Contains the configuration files for the NDT server and all the
 #   sidecar containers, provided by the Autojoin API on node registration.
+#
+# ./metadata: Contains configuration files used by some services such as
+#   traceroute-caller to read external IP addresses in some environments.
 
 # ### Configuration variables ###
 # Change the following settings according to your environment.
