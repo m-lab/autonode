@@ -9,7 +9,7 @@ API_KEY=${4:?Please provide the API key: ${USAGE}}
 PROBABILITY=${5:?Please provide the probability: ${USAGE}}
 
 IATA="oma"
-VM_ZONE="us-central1-a"
+VM_ZONE="us-central1-c"
 VM_NAME="autonode"
 DOCKER_COMPOSE_FILE_PATH="examples/ndt-fullstack.yml"
 INTERFACE_NAME="ens4"
