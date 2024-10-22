@@ -77,6 +77,10 @@ services:
       - target: 9993
         published: 9993
         protocol: tcp
+      # traceroute-caller prometheus.
+      - target: 9994
+        published: 9994
+        protocol: tcp
     command:
       - -uuid-prefix-file=/schemas/uuid.prefix
       - -datadir=/resultsdir/ndt
@@ -106,6 +110,11 @@ services:
     configs:
       - source: locate-verify-key
         target: /locate/verify.pub
+    healthcheck:
+      test: ["CMD", "wget", "http://localhost:80/"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
 
   # heartbeat reports health and liveness messages to M-Lab's Locate API every
   # 10sec. The Locate API is responsible for directing clients to nearby healthy
@@ -193,6 +202,10 @@ services:
       - -datatype-schema-file=ndt7:/schemas/ndt7.json
       - -datatype=annotation2
       - -datatype-schema-file=annotation2:/schemas/annotation2.json
+      - -datatype=scamper2
+      - -datatype-schema-file=scamper2:/schemas/scamper2.json
+      - -datatype=hopannotation2
+      - -datatype-schema-file=hopannotation2:/schemas/hopannotation2.json
       - -bundle-size-max=20971520
       - -bundle-age-max=1h
       - -missed-age=2h
@@ -201,6 +214,42 @@ services:
       - -upload-schema=false
       - -verbose
       - -prometheusx.listen-address=:9991
+
+  traceroute-caller:
+    image: measurementlab/traceroute-caller:v0.12.0
+    network_mode: host
+    volumes:
+      - ./resultsdir:/resultsdir
+      - ./schemas:/schemas
+      - ./metadata:/metadata
+    depends_on:
+      generate-schemas-tracreoute:
+        condition: service_completed_successfully
+      register-node:
+        condition: service_healthy
+      ndt-server:
+        condition: service_healthy
+    pull_policy: always
+    restart: always
+    configs:
+      - source: metadata-external-ipv6
+        target: /metadata/external-ipv6
+      - source: metadata-external-ip
+        target: /metadata/external-ip
+    command:
+      - -prometheusx.listen-address=:9994
+      - -traceroute-output=/resultsdir/ndt/scamper2
+      - -hopannotation-output=/resultsdir/ndt/hopannotation2
+      - -tcpinfo.eventsocket=/schemas/events.sock
+      - -IPCacheTimeout=10m
+      - -IPCacheUpdatePeriod=1m
+      - -scamper.timeout=30m
+      - -scamper.waitprobe=15
+      - -scamper.ptr=true
+      - -ipservice.sock=/schemas/uuid-annotator.sock
+      - -anonymize.ip=none
+      - -scamper.trace-type=regular
+      - -output.format=json
 
   # Generate the schemas needed by jostler to assess that the data is backward
   # compatible with upstream schemas and safe to upload.
@@ -222,6 +271,16 @@ services:
     - /generate-schemas
     - -ann2=/schemas/annotation2.json
 
+  generate-schemas-tracreoute:
+    network_mode: host
+    image: measurementlab/traceroute-caller:v0.12.0
+    volumes:
+      - ./schemas:/schemas
+    entrypoint:
+    - /generate-schemas
+    - -scamper2=/schemas/scamper2.json
+    - -hopannotation2=/schemas/hopannotation2.json
+
   # Generate the uuid prefix needed by the ndt-server and uuid-annotator.
   generate-uuid:
     network_mode: host
@@ -235,3 +294,9 @@ configs:
   locate-verify-key:
     content: |
       {"use":"sig","kty":"OKP","kid":"locate_20200409","crv":"Ed25519","alg":"EdDSA","x":"1tS1d-dd2B-VRBTWzOaq7zUngKDyV409K-o42LN2nx8"}
+  metadata-external-ip:
+    content: |
+      ${IPV4}
+  metadata-external-ipv6:
+    content: |
+      ${IPV6}
