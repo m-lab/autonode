@@ -111,7 +111,7 @@ services:
       - source: locate-verify-key
         target: /locate/verify.pub
     healthcheck:
-      test: ["CMD", "wget", "http://localhost:80/"]
+      test: ["CMD", "wget", "-O/dev/null", "-q", "http://localhost:80/"]
       interval: 3s
       timeout: 5s
       retries: 10
