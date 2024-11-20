@@ -46,7 +46,7 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --
     set -euxo pipefail
     whoami
     # Create volume folders if not present.
-    mkdir -p autocert autonode certs html schemas resultsdir metadata
+    # mkdir -p autocert autonode certs html schemas resultsdir metadata
 
     # Stop the docker compose if it's running.
     docker compose -f docker-compose.yml down
