@@ -35,14 +35,14 @@ gcloud --project ${PROJECT} compute scp --zone ${VM_ZONE} ${DOCKER_COMPOSE_FILE_
 
 # TODO(soltesz): remove root@ logic after deployment.
 # Shutdown the version running as root.
-gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} root@${VM_NAME} --tunnel-through-iap <<EOF
+gcloud --project ${PROJECT} compute ssh --quiet --zone ${VM_ZONE} root@${VM_NAME} --tunnel-through-iap <<EOF
     # Stop the docker compose if it's running.
     docker compose -f docker-compose.yml down
 EOF
 
 # Setup script. This stops docker compose, creates the required folders,
 # creates the .env file and restarts docker compose.
-gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --tunnel-through-iap <<EOF
+gcloud --project ${PROJECT} compute ssh --quiet --zone ${VM_ZONE} autonode@${VM_NAME} --tunnel-through-iap <<EOF
     set -euxo pipefail
     # Create volume folders if not present.
     mkdir -p autocert autonode certs html schemas resultsdir
