@@ -36,8 +36,6 @@ gcloud --project ${PROJECT} compute scp --zone ${VM_ZONE} ${DOCKER_COMPOSE_FILE_
 # TODO(soltesz): remove root@ logic after deployment.
 # Shutdown the version running as root.
 gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} root@${VM_NAME} --tunnel-through-iap <<EOF
-    set -x
-    whoami
     # Stop the docker compose if it's running.
     docker compose -f docker-compose.yml down
 EOF
@@ -48,7 +46,7 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --
     set -euxo pipefail
     whoami
     # Create volume folders if not present.
-    mkdir -p autocert autonode certs html schemas resultsdir
+    mkdir -p autocert autonode certs html schemas resultsdir metadata
 
     # Stop the docker compose if it's running.
     docker compose -f docker-compose.yml down
