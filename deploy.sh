@@ -45,8 +45,8 @@ EOF
 gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --tunnel-through-iap <<EOF
     set -euxo pipefail
     whoami
-    # Create volume folders if not present.
-    # mkdir -p autocert autonode certs html schemas resultsdir metadata
+    # Enable BBR.
+    sudo modprobe tcp_bbr
 
     # Stop the docker compose if it's running.
     docker compose -f docker-compose.yml down

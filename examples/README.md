@@ -26,6 +26,9 @@ The `ndt-fullstack.yml` and `env` file are a complete configuration for an
 autonode deployment. Please review the `env` file comments for hints about
 correct configuration.
 
+Additionally, ensure that the bbr module is loaded.
+
 ```sh
-docker-compose --env-file env --file ndt-fullstack.yml up
+sudo modprobe tcp_bbr
+docker-compose --env-file env --file ndt-fullstack.yml up -d
 ```
