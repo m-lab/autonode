@@ -1,4 +1,3 @@
-version: '3.7'
 services:
   # Register this node with the Autojoin API. A successful registration will
   # assign a DNS name for this node based on the public IPs, their ASN,
