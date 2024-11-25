@@ -33,13 +33,6 @@ fi
 # Copy the docker compose file to the VM.
 gcloud --project ${PROJECT} compute scp --zone ${VM_ZONE} ${DOCKER_COMPOSE_FILE_PATH} autonode@${VM_NAME}:~/docker-compose.yml --tunnel-through-iap
 
-# TODO(soltesz): remove root@ logic after deployment.
-# Shutdown the version running as root.
-gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} root@${VM_NAME} --tunnel-through-iap <<EOF
-    # Stop the docker compose if it's running.
-    docker compose -f docker-compose.yml down
-EOF
-
 # Setup script. This stops docker compose, creates the required folders,
 # creates the .env file and restarts docker compose.
 gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --tunnel-through-iap <<EOF
@@ -49,7 +42,7 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --
     sudo modprobe tcp_bbr
 
     # Stop the docker compose if it's running.
-    docker compose -f docker-compose.yml down
+    docker compose --profile ndt -f docker-compose.yml down
 
     # Find the external v4 and v6 addresses for this machine.
     IPV4=\$(curl -s ipinfo.io/ip)
@@ -70,6 +63,7 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --
     echo "IPV6=\$IPV6" >> .env
 
     # Start the docker compose again.
-    docker compose -f docker-compose.yml up -d
+    docker compose --profile ndt -f docker-compose.yml up -d
+
 EOF
 
