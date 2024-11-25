@@ -7,6 +7,7 @@ services:
   register-node:
     # NOTE: register should not be restarted on failure.
     image: measurementlab/autojoin-register:${DOCKER_TAG}
+    profiles: [check-config,ndt]
     pull_policy: always
     network_mode: host
     volumes:
@@ -33,6 +34,7 @@ services:
   # ndt-server is the public facing measurement service. Only ndt7 is enabled.
   ndt-server:
     image: measurementlab/ndt-server:v0.23.0
+    profiles: [ndt]
     network_mode: host
     cap_add:
       - NET_BIND_SERVICE
@@ -121,6 +123,7 @@ services:
   # servers.
   heartbeat:
     image: measurementlab/heartbeat:v0.15.1
+    profiles: [ndt]
     volumes:
       - ./autonode:/autonode
     depends_on:
@@ -142,6 +145,7 @@ services:
   # client and server IP so each NDT measurement is annotated in BigQuery.
   uuid-annotator:
     image: measurementlab/uuid-annotator:v0.5.10
+    profiles: [ndt]
     volumes:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
@@ -174,6 +178,7 @@ services:
   # compatible with upstream schemas.
   jostler:
     image: measurementlab/jostler:v1.1.4
+    profiles: [check-config,ndt]
     volumes:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
@@ -218,6 +223,7 @@ services:
 
   traceroute-caller:
     image: measurementlab/traceroute-caller:v0.12.0
+    profiles: [ndt]
     network_mode: host
     volumes:
       - ./resultsdir:/resultsdir
