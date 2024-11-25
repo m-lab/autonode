@@ -11,6 +11,7 @@ services:
     network_mode: host
     volumes:
       - ./autonode:/autonode
+    restart: always
     command:
       - -endpoint=https://autojoin-dot-${PROJECT}.appspot.com/autojoin/v0/node/register
       - -key=${API_KEY}
@@ -186,6 +187,7 @@ services:
         condition: service_completed_successfully
       register-node:
         condition: service_healthy
+    restart: always
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/autonode/service-account-autojoin.json
     # NOTE: jostler should not restart on exit.
