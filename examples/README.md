@@ -28,13 +28,18 @@ correct configuration.
 
 Requirements:
 
-* version v2.23.3 or later of docker compose
-* the bbr module is loaded in the kernel
+* version v2.28 or later of docker compose
+* the bbr module must be loaded in the kernel
 
 ```sh
 docker compose version
 
 sudo modprobe tcp_bbr
+# Recommended: add "tcp_bbr" to /etc/modules
 
-docker compose --env-file env --file ndt-fullstack.yml up -d
+# Verify environment and credentials are working, then manually shutdown with ctrl-C.
+docker compose --profile check-config --env-file env --file ndt-fullstack.yml up
+
+# Start ndt service in background. This will restart automatically on reboot.
+docker compose --profile ndt --env-file env --file ndt-fullstack.yml up -d
 ```
