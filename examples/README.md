@@ -28,8 +28,8 @@ correct configuration.
 
 Requirements:
 
-* version v2.28 or later of docker compose
-* the bbr module must be loaded in the kernel
+* Version v2.28 or later of docker compose, installed from [official docker images](https://docs.docker.com/engine/install/)
+* The `tcp_bbr` module must be loaded in the kernel
 
 ```sh
 docker compose version
