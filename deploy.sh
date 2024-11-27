@@ -61,9 +61,10 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --
     echo "INTERFACE_MAXRATE=${INTERFACE_MAXRATE}" >> .env
     echo "IPV4=\$IPV4" >> .env
     echo "IPV6=\$IPV6" >> .env
+    echo "TYPE=virtual" >> .env
+    echo "UPLINK=1g" >> .env
 
     # Start the docker compose again.
     docker compose --profile ndt -f docker-compose.yml up -d
 
 EOF
-
