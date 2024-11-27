@@ -57,8 +57,15 @@ PROBABILITY=0.1
 # INTERFACE_NAME is the name of the interface to apply INTERFACE_MAXRATE to.
 INTERFACE_NAME=
 
+# UPLINK is the speed of the uplink the M-Lab machine is connected to. The value
+# must be expressed as an integer followed by the letter "g" (e.g., "1g", "10g",
+# "25g"), where "g" represents Gbps (gigabits per second). The minimum uplink
+# M-lab requires is 1g, but 10g or greater is recommended.
+UPLINK=
+
 # INTERFACE_MAXRATE is the rate (in bit/s) after which the NDT server will
-# refuse new connections. Set it according to this node's uplink.
+# refuse new connections. Set it according to this node's uplink defined in
+# UPLINK.
 # Recommended values:
 # - 1G: INTERFACE_MAXRATE=150000000
 # - 10G: INTERFACE_MAXRATE=7000000000
@@ -73,6 +80,11 @@ IPV4=
 # If you want you node to be accessible over IPv6, this must be set.
 IPV6=
 
+# TYPE is the type of machine that will be running the M-Lab software. The only
+# valid values are "physical" or "virtual". This helps M-Lab understand the
+# environment where the software is running. In other words, is the machine a
+# bare-metal machine dedicated to M-Lab, or a VM?
+TYPE=
 
 # ### Static configuration variables ###
 # ###    Do NOT change these.        ###
