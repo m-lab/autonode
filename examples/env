@@ -91,4 +91,4 @@ TYPE=
 
 PROJECT=mlab-autojoin
 LOCATE_URL=locate.measurementlab.net
-DOCKER_TAG=latest
+DOCKER_TAG=stable
