@@ -4,5 +4,5 @@ steps:
 - name: us-central1-docker.pkg.dev/$PROJECT_ID/build-images/gcloud-jsonnet-cbif:1.1
   dir: '/workspace/'
   args: [
-    '/workspace/deploy.sh $PROJECT_ID ${_DOCKER_TAG} mlab ${_API_KEY} ${_PROBABILITY}'
+    '/workspace/deploy.sh $PROJECT_ID mlab ${_API_KEY} ${_PROBABILITY}'
   ]
