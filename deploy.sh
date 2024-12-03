@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euxo pipefail
 
-USAGE="$0 <project> <docker-tag> <organization> <api-key> <probability>"
+USAGE="$0 <project> <organization> <api-key> <probability>"
 PROJECT=${1:?Please provide the GCP project (e.g., mlab-sandbox): ${USAGE}}
 ORG=${2:?Please provide the organization (e.g., mlab): ${USAGE}}
 API_KEY=${3:?Please provide the API key: ${USAGE}}
@@ -65,7 +65,7 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --
     echo "IPV4=\$IPV4" >> .env
     echo "IPV6=\$IPV6" >> .env
     echo "TYPE=virtual" >> .env
-    echo "UPLINK=1g" >> .env
+    echo "UPLINK=7g" >> .env
 
     # Start the docker compose again.
     docker compose --profile ndt -f docker-compose.yml up -d
