@@ -86,9 +86,17 @@ IPV6=
 # bare-metal machine dedicated to M-Lab, or a VM?
 TYPE=
 
+# DOCKER_TAG refers to the latest release of the repository
+# github.com/m-lab/autojoin. Visit the releases page of that repository:
+#
+# https://github.com/m-lab/autojoin/releases
+#
+# Use the git tag of the latest release as the value for this variable e.g.,
+# "v0.2.11"
+DOCKER_TAG=
+
 # ### Static configuration variables ###
 # ###    Do NOT change these.        ###
 
 PROJECT=mlab-autojoin
 LOCATE_URL=locate.measurementlab.net
-DOCKER_TAG=stable
