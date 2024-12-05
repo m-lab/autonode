@@ -6,7 +6,7 @@ services:
   # the Autojoin API every hour.
   register-node:
     # NOTE: register should not be restarted on failure.
-    image: measurementlab/autojoin-register:${DOCKER_TAG}
+    image: measurementlab/autojoin-register:v0.2.11
     profiles: [check-config,ndt]
     pull_policy: always
     network_mode: host
@@ -25,6 +25,8 @@ services:
       - -probability=${PROBABILITY}
       - -ipv4=${IPV4}
       - -ipv6=${IPV6}
+      - -type=${TYPE}
+      - -uplink=${UPLINK}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/ready"]
       interval: 3s

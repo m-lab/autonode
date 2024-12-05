@@ -1,12 +1,11 @@
 #!/bin/bash
 set -euxo pipefail
 
-USAGE="$0 <project> <docker-tag> <organization> <api-key> <probability>"
+USAGE="$0 <project> <organization> <api-key> <probability>"
 PROJECT=${1:?Please provide the GCP project (e.g., mlab-sandbox): ${USAGE}}
-DOCKER_TAG=${2:?Please provide the Docker tag to deploy: ${USAGE}}
-ORG=${3:?Please provide the organization (e.g., mlab): ${USAGE}}
-API_KEY=${4:?Please provide the API key: ${USAGE}}
-PROBABILITY=${5:?Please provide the probability: ${USAGE}}
+ORG=${2:?Please provide the organization (e.g., mlab): ${USAGE}}
+API_KEY=${3:?Please provide the API key: ${USAGE}}
+PROBABILITY=${4:?Please provide the probability: ${USAGE}}
 
 IATA="oma"
 VM_ZONE="us-central1-c"
@@ -20,6 +19,10 @@ LOCATE_URL="locate-dot-${PROJECT}.appspot.com"
 if [ "$PROJECT" = "mlab-autojoin" ]; then
   LOCATE_URL="locate.measurementlab.net"
 fi
+
+DOCKER_TAG=$(
+  curl --silent  https://api.github.com/repos/m-lab/autojoin/releases/latest | jq -r '.tag_name'
+)
 
 if test -f ${DOCKER_COMPOSE_FILE_PATH}; then
   # NOTE: we will treat the M-Lab deployment as authoritative. New schemas will be
@@ -61,9 +64,10 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --
     echo "INTERFACE_MAXRATE=${INTERFACE_MAXRATE}" >> .env
     echo "IPV4=\$IPV4" >> .env
     echo "IPV6=\$IPV6" >> .env
+    echo "TYPE=virtual" >> .env
+    echo "UPLINK=7g" >> .env
 
     # Start the docker compose again.
     docker compose --profile ndt -f docker-compose.yml up -d
 
 EOF
-
