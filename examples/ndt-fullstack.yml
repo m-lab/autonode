@@ -305,7 +305,6 @@ services:
   # for ndt-server to use the BBR congestion control algorithm.
   check-bbr:
     image: bash:latest
-    network_mode: host
     command: ["sh", "-c", "lsmod | grep tcp_bbr"]
 
 configs:
