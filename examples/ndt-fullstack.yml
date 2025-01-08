@@ -7,7 +7,7 @@ services:
   register-node:
     # NOTE: register should not be restarted on failure.
     image: measurementlab/autojoin-register:v0.2.11
-    profiles: [check-config,ndt]
+    profiles: [check-config, ndt]
     pull_policy: always
     network_mode: host
     volumes:
@@ -51,6 +51,8 @@ services:
       generate-schemas-ndt7:
         condition: service_completed_successfully
       generate-uuid:
+        condition: service_completed_successfully
+      check-bbr:
         condition: service_completed_successfully
       register-node:
         condition: service_healthy
@@ -180,7 +182,7 @@ services:
   # compatible with upstream schemas.
   jostler:
     image: measurementlab/jostler:v1.1.4
-    profiles: [check-config,ndt]
+    profiles: [check-config, ndt]
     volumes:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
@@ -268,8 +270,8 @@ services:
     volumes:
       - ./schemas:/schemas
     entrypoint:
-    - /generate-schemas
-    - -ndt7=/schemas/ndt7.json
+      - /generate-schemas
+      - -ndt7=/schemas/ndt7.json
 
   generate-schemas-annotation2:
     network_mode: host
@@ -277,8 +279,8 @@ services:
     volumes:
       - ./schemas:/schemas
     entrypoint:
-    - /generate-schemas
-    - -ann2=/schemas/annotation2.json
+      - /generate-schemas
+      - -ann2=/schemas/annotation2.json
 
   generate-schemas-tracreoute:
     network_mode: host
@@ -286,9 +288,9 @@ services:
     volumes:
       - ./schemas:/schemas
     entrypoint:
-    - /generate-schemas
-    - -scamper2=/schemas/scamper2.json
-    - -hopannotation2=/schemas/hopannotation2.json
+      - /generate-schemas
+      - -scamper2=/schemas/scamper2.json
+      - -hopannotation2=/schemas/hopannotation2.json
 
   # Generate the uuid prefix needed by the ndt-server and uuid-annotator.
   generate-uuid:
@@ -298,6 +300,12 @@ services:
       - ./schemas:/schemas
     command:
       - -filename=/schemas/uuid.prefix
+
+  # Check that the tcp_bbr module is available on the host. This is required
+  # for ndt-server to use the BBR congestion control algorithm.
+  check-bbr:
+    image: bash:latest
+    command: ["sh", "-c", "lsmod | grep tcp_bbr"]
 
 configs:
   locate-verify-key:
