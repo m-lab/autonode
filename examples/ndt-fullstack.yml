@@ -13,6 +13,11 @@ services:
     volumes:
       - ./autonode:/autonode
     restart: always
+    configs:
+      - source: metadata-external-ipv6
+        target: /metadata/external-ipv6
+      - source: metadata-external-ip
+        target: /metadata/external-ip
     command:
       - -endpoint=https://autojoin-dot-${PROJECT}.appspot.com/autojoin/v0/node/register
       - -key=${API_KEY}
@@ -23,8 +28,8 @@ services:
       - -healthcheck-addr=:8001
       - -ports=9990,9991,9992,9993,9994
       - -probability=${PROBABILITY}
-      - -ipv4=${IPV4}
-      - -ipv6=${IPV6}
+      - -ipv4=@/metadata/external-ip
+      - -ipv6=@/metadata/external-ipv6
       - -type=${TYPE}
       - -uplink=${UPLINK}
     healthcheck:
@@ -99,11 +104,13 @@ services:
       - -txcontroller.max-rate=${INTERFACE_MAXRATE}
       - -prometheusx.listen-address=:9990
       # Add server metadata.
-      - -label=type=virtual
+      - -label=type=${TYPE}
       - -label=deployment=byos
       - -label=managed=none
       - -label=loadbalanced=false
       - -label=org=${ORGANIZATION}
+      - -label=external-ip=@/metadata/external-ip
+      - -label=external-ipv6=@/metadata/external-ipv6
       # Effectively disable ndt5.
       - -ndt5_addr=127.0.0.1:3002
       - -ndt5_ws_addr=127.0.0.1:3001
@@ -116,6 +123,10 @@ services:
     configs:
       - source: locate-verify-key
         target: /locate/verify.pub
+      - source: metadata-external-ipv6
+        target: /metadata/external-ipv6
+      - source: metadata-external-ip
+        target: /metadata/external-ip
     healthcheck:
       test: ["CMD", "wget", "-O/dev/null", "-q", "http://localhost:80/"]
       interval: 3s
