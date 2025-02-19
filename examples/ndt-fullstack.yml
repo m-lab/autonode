@@ -262,6 +262,24 @@ services:
       - -scamper.trace-type=regular
       - -output.format=json
 
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:1.9.0
+    container_name: node-exporter
+    restart: always
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - --path.rootfs=/host
+      - --collector.disable-defaults
+      - --collector.cpu
+      - --collector.filesystem
+      - --collector.loadavg
+      - --collector.meminfo
+      - --collector.netdev
+      - --collector.time
+
   # Generate the schemas needed by jostler to assess that the data is backward
   # compatible with upstream schemas and safe to upload.
   generate-schemas-ndt7:
