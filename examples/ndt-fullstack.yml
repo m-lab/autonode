@@ -314,8 +314,8 @@ configs:
     content: |
       {"use":"sig","kty":"OKP","kid":"locate_20200409","crv":"Ed25519","alg":"EdDSA","x":"1tS1d-dd2B-VRBTWzOaq7zUngKDyV409K-o42LN2nx8"}
   metadata-external-ip:
-    content: |
+    content: |-
       ${IPV4}
   metadata-external-ipv6:
-    content: |
+    content: |-
       ${IPV6}
