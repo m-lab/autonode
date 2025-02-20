@@ -72,8 +72,7 @@ UPLINK=
 INTERFACE_MAXRATE=
 
 # IPV4 is the external IPv4 address that this node will be reachable at.
-# If left empty, the v4 address used to connect to Autojoin API by the register
-# container is used instead.
+# This is required.
 IPV4=
 
 # IPV6 is the external IPv6 address that this node will be reachable at.

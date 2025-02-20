@@ -99,11 +99,13 @@ services:
       - -txcontroller.max-rate=${INTERFACE_MAXRATE}
       - -prometheusx.listen-address=:9990
       # Add server metadata.
-      - -label=type=virtual
+      - -label=type=${TYPE}
       - -label=deployment=byos
       - -label=managed=none
       - -label=loadbalanced=false
       - -label=org=${ORGANIZATION}
+      - -label=external-ip=${IPV4}
+      - -label=external-ipv6=${IPV6}
       # Effectively disable ndt5.
       - -ndt5_addr=127.0.0.1:3002
       - -ndt5_ws_addr=127.0.0.1:3001
@@ -330,8 +332,8 @@ configs:
     content: |
       {"use":"sig","kty":"OKP","kid":"locate_20200409","crv":"Ed25519","alg":"EdDSA","x":"1tS1d-dd2B-VRBTWzOaq7zUngKDyV409K-o42LN2nx8"}
   metadata-external-ip:
-    content: |
+    content: |-
       ${IPV4}
   metadata-external-ipv6:
-    content: |
+    content: |-
       ${IPV6}
