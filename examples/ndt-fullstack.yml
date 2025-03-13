@@ -17,7 +17,6 @@ services:
       - -endpoint=https://autojoin-dot-${PROJECT}.appspot.com/autojoin/v0/node/register
       - -key=${API_KEY}
       - -service=ndt
-      - -organization=${ORGANIZATION}
       - -iata=${IATA}
       - -output=/autonode
       - -healthcheck-addr=:8001
