@@ -35,7 +35,7 @@ services:
 
   # ndt-server is the public facing measurement service. Only ndt7 is enabled.
   ndt-server:
-    image: measurementlab/ndt-server:v0.23.0
+    image: measurementlab/ndt-server:v0.23.1
     profiles: [ndt]
     network_mode: host
     cap_add:
