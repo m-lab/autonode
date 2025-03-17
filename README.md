@@ -70,30 +70,30 @@ file](https://github.com/m-lab/autonode/blob/main/examples/env). The file is
 fairly well commented, but here is an outline of the variables and what sort of
 values they should have:
 
-* ORGANIZATION: an alphanumeric name that M-Lab assigns to you.
-* API_KEY: the API key that M-Lab provides you after you register.
-* IATA: the 3-character [IATA
+* **ORGANIZATION**: an alphanumeric name that M-Lab assigns to you.
+* **API_KEY**: the API key that M-Lab provides you after you register.
+* **IATA**: the 3-character [IATA
   code](https://www.iata.org/en/publications/directories/code-search/) of the
   nearest airport. If the nearest airport doesn't have an IATA code, then find
   the nearest one that does. M-Lab will work with you on the proper value for
   this variable.
-* PROBABILITY: this is the probability that M-Lab's load balancing service
+* **PROBABILITY**: this is the probability that M-Lab's load balancing service
   ([Locate Service](https://github.com/m-lab/locate)) will send a test to your
   server. The M-Lab platform gets many millions of tests per day. Depending on
   where your server is located, its resources, and the speed of the machine's
   uplink, the test volume could possible overwhelm the machine and/or your
   network. You can modify this to suit your needs, either increasing or
   decreasing the traffic load as necessary.
-  * INTERFACE_NAME: the NDT server needs to know the name of the primary network
+* **INTERFACE_NAME**: the NDT server needs to know the name of the primary network
   interface on the machine (e.g., eth0, enp114s0, etc.)
-  * INTERFACE_MAXRATE: when the bitrate on the interface exceeds this value the
+* **INTERFACE_MAXRATE**: when the bitrate on the interface exceeds this value the
   NDT server will start refusing connections. This is because we never want the
   uplink to become saturated, causing the network bottleneck of a test to become
   the server's own uplink, which generate bad data. The recommended values are
   150Mbit for 1Gbps uplinks and 7Gbps for 10Gbps uplinks.
-  * IPV4: the public IPv4 address of the primary network interface.  IPV6: the
-  * public IPv6 address of the primary network interface.  TYPE: the type of
-  * this machine, either "physical" or "virtual".
+* **IPV4**: the public IPv4 address of the primary network interface.
+* **IPV6**: the public IPv6 address of the primary network interface.
+* **TYPE**: the type of the machine, either "physical" or "virtual".
 
 Once you have filled in values for all of the environment variable is the env
 file, these steps should be performed:
