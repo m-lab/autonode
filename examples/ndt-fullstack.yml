@@ -6,7 +6,7 @@ services:
   # the Autojoin API every hour.
   register-node:
     # NOTE: register should not be restarted on failure.
-    image: measurementlab/autojoin-register:v0.2.11
+    image: measurementlab/autojoin-register:v0.2.12
     profiles: [check-config, ndt]
     pull_policy: always
     network_mode: host
@@ -17,7 +17,6 @@ services:
       - -endpoint=https://autojoin-dot-${PROJECT}.appspot.com/autojoin/v0/node/register
       - -key=${API_KEY}
       - -service=ndt
-      - -organization=${ORGANIZATION}
       - -iata=${IATA}
       - -output=/autonode
       - -healthcheck-addr=:8001
