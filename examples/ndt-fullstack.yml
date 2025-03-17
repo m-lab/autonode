@@ -6,7 +6,7 @@ services:
   # the Autojoin API every hour.
   register-node:
     # NOTE: register should not be restarted on failure.
-    image: measurementlab/autojoin-register:v0.2.12
+    image: measurementlab/autojoin-register:v0.2.13
     profiles: [check-config, ndt]
     pull_policy: always
     network_mode: host
