@@ -191,49 +191,6 @@ services:
       - ./autonode:/autonode
     network_mode: host
     depends_on:
-      register-node:
-        condition: service_healthy
-    restart: always
-    environment:
-      - GOOGLE_APPLICATION_CREDENTIALS=/autonode/service-account-autojoin.json
-    # NOTE: jostler should not restart on exit.
-    command:
-      - -mlab-node-name=@/autonode/hostname
-      # NOTE: the ndt7 schema must already exist in the target bucket.
-      - -gcs-bucket=archive-${PROJECT}
-      - -gcs-data-dir=autoload/v2
-      - -local-data-dir=/resultsdir
-      - -organization=${ORGANIZATION}
-      - -experiment=ndt
-      - -datatype=ndt7
-      - -datatype-schema-file=ndt7:/schemas/ndt7.json
-      - -datatype=annotation2
-      - -datatype-schema-file=annotation2:/schemas/annotation2.json
-      - -datatype=scamper2
-      - -datatype-schema-file=scamper2:/schemas/scamper2.json
-      - -datatype=hopannotation2
-      - -datatype-schema-file=hopannotation2:/schemas/hopannotation2.json
-      - -bundle-size-max=20971520
-      - -bundle-age-max=1h
-      - -missed-age=2h
-      - -missed-interval=5m
-      - -extensions=.json
-      - -upload-schema=false
-      - -verbose
-      - -prometheusx.listen-address=:9991
-
-  # This container only gets run with the "check-config" profile, and is only
-  # responsible for generating and uploading the schemas to GCS.
-  jostler-upload-schemas:
-    image: measurementlab/jostler:v1.1.4
-    profiles: [check-config]
-    volumes:
-      - ./resultsdir:/resultsdir
-      - ./schemas:/schemas
-      - ./certs:/certs
-      - ./autonode:/autonode
-    network_mode: host
-    depends_on:
       generate-schemas-ndt7:
         condition: service_completed_successfully
       generate-schemas-annotation2:
@@ -267,7 +224,7 @@ services:
       - -missed-age=2h
       - -missed-interval=5m
       - -extensions=.json
-      - -upload-schema=true
+      - -upload-schema=false
       - -verbose
       - -prometheusx.listen-address=:9991
 
