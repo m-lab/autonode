@@ -280,7 +280,7 @@ services:
       - ./schemas:/schemas
       - ./metadata:/metadata
     depends_on:
-      generate-schemas-tracreoute:
+      generate-schemas-traceroute:
         condition: service_completed_successfully
       register-node:
         condition: service_healthy
@@ -350,7 +350,7 @@ services:
       - /generate-schemas
       - -ann2=/schemas/annotation2.json
 
-  generate-schemas-tracreoute:
+  generate-schemas-traceroute:
     network_mode: host
     image: measurementlab/traceroute-caller:v0.12.0
     volumes:
