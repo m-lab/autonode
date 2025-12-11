@@ -23,7 +23,7 @@
 ORGANIZATION=kinkadetest
 
 # API_KEY is the API key provided by M-Lab.
-API_KEY=AIzaSyDdlg8g1Jg5Nvet3007sYFFhZEriWKDHjE
+API_KEY=
 
 # IATA is the 3-letter, lowercase IATA code of the nearest international
 # airport. You can use the following service to estimate it, providing your
