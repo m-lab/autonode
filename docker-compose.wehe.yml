@@ -1,0 +1,305 @@
+services:
+  # Register this node with the Autojoin API. A successful registration will
+  # assign a DNS name for this node based on the public IPs, their ASN,
+  # organiztion, and IATA code. As well, Register distributes other credentials
+  # needed to upload and archive measurement data. The register command contacts
+  # the Autojoin API every hour.
+  register-node:
+    # NOTE: register should not be restarted on failure.
+    image: measurementlab/autojoin-register:v0.2.13
+    profiles: [ check-config, wehe ]
+    pull_policy: always
+    network_mode: host
+    volumes:
+      - ./autonode:/autonode
+    restart: always
+    command:
+      - -endpoint=https://autojoin-dot-${PROJECT}.appspot.com/autojoin/v0/node/register
+      - -key=${API_KEY}
+      - -service=wehe
+      - -iata=${IATA}
+      - -output=/autonode
+      - -healthcheck-addr=:8001
+      - -ports=9990,9991,9992,9993,9994,9995
+      - -probability=${PROBABILITY}
+      - -ipv4=${IPV4}
+      - -ipv6=${IPV6}
+      - -type=${TYPE}
+      - -uplink=${UPLINK}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/ready" ]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  # wehe is the public facing measurement service.
+  wehe:
+    image: measurementlab/wehe-py3:v0.3.12
+    profiles: [ wehe ]
+    network_mode: host
+    cap_add:
+      - NET_RAW
+    volumes:
+      - ./autonode:/autonode
+      - ./resultsdir:/var/spool/wehe
+      - ./schemas:/var/spool/datatypes
+      - ./wehe-ca:/wehe/ssl
+    depends_on:
+      generate-uuid:
+        condition: service_completed_successfully
+      register-node:
+        condition: service_healthy
+    restart: always
+    # NOTE: All containers will use the host network. All the following ports
+    # must not be in use.
+    ports:
+      # jostler prometheus.
+      - target: 9991
+        published: 9991
+        protocol: tcp
+      # annotator prometheus.
+      - target: 9992
+        published: 9992
+        protocol: tcp
+      # heartbeat prometheus.
+      - target: 9993
+        published: 9993
+        protocol: tcp
+      # traceroute-caller prometheus.
+      - target: 9994
+        published: 9994
+        protocol: tcp
+    environment:
+      - UUID_PREFIX=/var/spool/datatypes/uuid.prefix
+    command:
+      - ${FQDN}
+      - ${INTERFACE_NAME}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9990/metrics"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  tcp-info:
+    image: measurementlab/tcp-info:v1.9.0
+    profiles: [ wehe ]
+    volumes:
+      - ./resultsdir:/resultsdir
+      - ./schemas:/schemas
+    depends_on:
+      register-node:
+        condition: service_healthy
+    restart: always
+    command:
+      -prometheusx.listen-address=:9996
+      -output=/resultsDir/wehe/tcpinfo
+      -uuid-prefix-file=/schemas/uuid.prefix
+      -tcpinfo.eventsocket=/schemas/events.sock
+      -exclude-srcport=9990,9991,9992,9993,9994,9995,9996
+      -anonymize.ip=none
+    network_mode: host
+
+  # heartbeat reports health and liveness messages to M-Lab's Locate API every
+  # 10sec. The Locate API is responsible for directing clients to nearby healthy
+  # servers.
+  heartbeat:
+    image: measurementlab/heartbeat:v0.15.1
+    profiles: [ wehe ]
+    volumes:
+      - ./autonode:/autonode
+    depends_on:
+      wehe:
+        condition: service_started
+      register-node:
+        condition: service_healthy
+    restart: always
+    command:
+      - -prometheusx.listen-address=:9993
+      - -experiment=wehe
+      - -hostname=@/autonode/hostname
+      - -registration-url=file:///autonode/registration.json
+      - -heartbeat-url=wss://${LOCATE_URL}/v2/platform/heartbeat?key=${API_KEY}
+      - -services=wehe/replay=https:///
+    network_mode: host
+
+  # uuid-annotator records network and geographic annotations based on the
+  # client and server IP so each Wehe measurement is annotated in BigQuery.
+  uuid-annotator:
+    image: measurementlab/uuid-annotator:v0.5.10
+    profiles: [ wehe ]
+    volumes:
+      - ./resultsdir:/resultsdir
+      - ./schemas:/schemas
+      - ./certs:/certs
+      - ./autonode:/autonode
+    depends_on:
+      wehe:
+        condition: service_started
+      register-node:
+        condition: service_healthy
+    network_mode: host
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/autonode/service-account-autojoin.json
+    restart: always
+    # NOTE: all database URLs are required.
+    command:
+      - -prometheusx.listen-address=:9992
+      - -datadir=/resultsdir/wehe/annotation2
+      - -tcpinfo.eventsocket=/schemas/events.sock
+      - -ipservice.sock=/schemas/uuid-annotator.sock
+      - -maxmind.url=gs://downloader-${PROJECT}/Maxmind/current/GeoLite2-City.tar.gz
+      - -routeview-v4.url=gs://downloader-${PROJECT}/RouteViewIPv4/current/routeview.pfx2as.gz
+      - -routeview-v6.url=gs://downloader-${PROJECT}/RouteViewIPv6/current/routeview.pfx2as.gz
+      - -siteinfo.url=file:///autonode/annotation.json
+      - -hostname=@/autonode/hostname
+
+  # jostler archives the raw data from Wehe and the uuid-annotator into
+  # JSONL "bundles". These bundles are uploaded to GCS using credentials from
+  # register. Jostler depends on the local schemas being up to date or backward
+  # compatible with upstream schemas.
+  jostler:
+    image: measurementlab/jostler:v1.1.4
+    profiles: [ wehe ]
+    volumes:
+      - ./resultsdir:/resultsdir
+      - ./schemas:/schemas
+      - ./certs:/certs
+      - ./autonode:/autonode
+    network_mode: host
+    depends_on:
+      wehe:
+        condition: service_healthy
+      generate-schemas-annotation2:
+        condition: service_completed_successfully
+      generate-schemas-traceroute:
+        condition: service_completed_successfully
+      register-node:
+        condition: service_healthy
+    restart: always
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/autonode/service-account-autojoin.json
+    # NOTE: jostler should not restart on exit.
+    command:
+      - -mlab-node-name=@/autonode/hostname
+      # NOTE: the wehe schema must already exist in the target bucket.
+      - -gcs-bucket=archive-${PROJECT}
+      - -gcs-data-dir=autoload/v2
+      - -local-data-dir=/resultsdir
+      - -organization=${ORGANIZATION}
+      - -experiment=wehe
+      - -datatype=replayInfo1
+      - -datatype-schema-file=replayInfo1:/schemas/replayInfo1.json
+      - -datatype=clientXputs1
+      - -datatype-schema-file=clientXputs1:/schemas/clientXputs1.json
+      - -datatype=decisions1
+      - -datatype-schema-file=decisions1:/schemas/decisions1.json
+      - -datatype=annotation2
+      - -datatype-schema-file=annotation2:/schemas/annotation2.json
+      - -datatype=scamper2
+      - -datatype-schema-file=scamper2:/schemas/scamper2.json
+      - -datatype=hopannotation2
+      - -datatype-schema-file=hopannotation2:/schemas/hopannotation2.json
+      - -bundle-size-max=20971520
+      - -bundle-age-max=1h
+      - -missed-age=2h
+      - -missed-interval=5m
+      - -extensions=.json
+      - -upload-schema=false
+      - -verbose
+      - -prometheusx.listen-address=:9991
+
+  traceroute-caller:
+    image: measurementlab/traceroute-caller:v0.12.0
+    profiles: [ wehe ]
+    network_mode: host
+    volumes:
+      - ./resultsdir:/resultsdir
+      - ./schemas:/schemas
+      - ./metadata:/metadata
+    depends_on:
+      wehe:
+        condition: service_started
+      generate-schemas-traceroute:
+        condition: service_completed_successfully
+      register-node:
+        condition: service_healthy
+    restart: always
+    configs:
+      - source: metadata-external-ipv6
+        target: /metadata/external-ipv6
+      - source: metadata-external-ip
+        target: /metadata/external-ip
+    command:
+      - -prometheusx.listen-address=:9994
+      - -traceroute-output=/resultsdir/wehe/scamper2
+      - -hopannotation-output=/resultsdir/wehe/hopannotation2
+      - -tcpinfo.eventsocket=/schemas/events.sock
+      - -IPCacheTimeout=10m
+      - -IPCacheUpdatePeriod=1m
+      - -scamper.timeout=30m
+      - -scamper.waitprobe=15
+      - -scamper.ptr=true
+      - -ipservice.sock=/schemas/uuid-annotator.sock
+      - -anonymize.ip=none
+      - -scamper.trace-type=regular
+      - -output.format=json
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.9.0
+    profiles: [ wehe ]
+    container_name: node-exporter
+    restart: always
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - --web.listen-address=:9995
+      - --path.rootfs=/host
+      - --collector.disable-defaults
+      - --collector.cpu
+      - --collector.diskstats
+      - --collector.filesystem
+      - --collector.loadavg
+      - --collector.meminfo
+      - --collector.netdev
+      - --collector.stat
+      - --collector.time
+
+  # Generate the schemas needed by jostler to assess that the data is backward
+  # compatible with upstream schemas and safe to upload.
+  generate-schemas-annotation2:
+    network_mode: host
+    image: measurementlab/uuid-annotator:v0.5.8
+    volumes:
+      - ./schemas:/schemas
+    entrypoint:
+      - /generate-schemas
+      - -ann2=/schemas/annotation2.json
+
+  generate-schemas-traceroute:
+    network_mode: host
+    image: measurementlab/traceroute-caller:v0.12.0
+    volumes:
+      - ./schemas:/schemas
+    entrypoint:
+      - /generate-schemas
+      - -scamper2=/schemas/scamper2.json
+      - -hopannotation2=/schemas/hopannotation2.json
+
+  # Generate the uuid prefix needed by Wehe and uuid-annotator.
+  generate-uuid:
+    network_mode: host
+    image: measurementlab/uuid:v1.0.0
+    volumes:
+      - ./schemas:/schemas
+    command:
+      - -filename=/schemas/uuid.prefix
+
+configs:
+  metadata-external-ip:
+    content: |-
+      ${IPV4}
+  metadata-external-ipv6:
+    content: |-
+      ${IPV6}
