@@ -144,7 +144,7 @@ services:
       - -registration-url=file:///autonode/registration.json
       - -heartbeat-url=wss://${LOCATE_URL}/v2/platform/heartbeat-jwt
       - -api-key=${API_KEY}
-      - -token-exchange-url=https://auth.${PROJECT}.measurementlab.net/v0/token/autojoin
+      - -token-exchange-url=https://${AUTH_URL}/v0/token/autojoin
       - -services=ndt/ndt7=ws:///ndt/v7/download,ws:///ndt/v7/upload,wss:///ndt/v7/download,wss:///ndt/v7/upload
     network_mode: host
 

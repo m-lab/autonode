@@ -90,3 +90,4 @@ TYPE=
 
 PROJECT=mlab-autojoin
 LOCATE_URL=locate.measurementlab.net
+AUTH_URL=auth.mlab-oti.measurementlab.net
