@@ -16,8 +16,10 @@ INTERFACE_MAXRATE="150000000"
 SA_ACCOUNT="autonode@${PROJECT}.iam.gserviceaccount.com"
 
 LOCATE_URL="locate-dot-${PROJECT}.appspot.com"
+AUTH_URL="auth.${PROJECT}.measurementlab.net"
 if [ "$PROJECT" = "mlab-autojoin" ]; then
   LOCATE_URL="locate.measurementlab.net"
+  AUTH_URL="auth.mlab-oti.measurementlab.net"
 fi
 
 DOCKER_TAG=$(
@@ -59,6 +61,7 @@ gcloud --project ${PROJECT} compute ssh --zone ${VM_ZONE} autonode@${VM_NAME} --
     echo "PROJECT=${PROJECT}" >> .env
     echo "IATA=${IATA}" >> .env
     echo "LOCATE_URL=${LOCATE_URL}" >> .env
+    echo "AUTH_URL=${AUTH_URL}" >> .env
     echo "PROBABILITY=${PROBABILITY}" >> .env
     echo "INTERFACE_NAME=${INTERFACE_NAME}" >> .env
     echo "INTERFACE_MAXRATE=${INTERFACE_MAXRATE}" >> .env
