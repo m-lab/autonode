@@ -49,8 +49,6 @@ services:
     depends_on:
       generate-schemas-ndt7:
         condition: service_completed_successfully
-      generate-uuid:
-        condition: service_completed_successfully
       check-bbr:
         condition: service_completed_successfully
       register-node:
@@ -86,6 +84,19 @@ services:
       - target: 9994
         published: 9994
         protocol: tcp
+    # Generate the UUID prefix before starting ndt-server. This runs on every
+    # container start (including restart:always restarts after host reboot),
+    # ensuring a fresh prefix with the current boot time. The prefix uses btime
+    # from /proc/stat, which is a deterministic integer — no coordination file
+    # or separate container needed.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        btime=$$(awk '/^btime / {print $$2}' /proc/stat) &&
+        printf '%s_%s' "$$(hostname)" "$$btime" > /schemas/uuid.prefix &&
+        exec /ndt-server "$$@"
+      - --
     command:
       - -uuid-prefix-file=/schemas/uuid.prefix
       - -datadir=/resultsdir/ndt
@@ -318,15 +329,6 @@ services:
       - /generate-schemas
       - -scamper2=/schemas/scamper2.json
       - -hopannotation2=/schemas/hopannotation2.json
-
-  # Generate the uuid prefix needed by the ndt-server and uuid-annotator.
-  generate-uuid:
-    network_mode: host
-    image: measurementlab/uuid:v1.0.0
-    volumes:
-      - ./schemas:/schemas
-    command:
-      - -filename=/schemas/uuid.prefix
 
   # Check that the tcp_bbr module is available on the host. This is required
   # for ndt-server to use the BBR congestion control algorithm.
