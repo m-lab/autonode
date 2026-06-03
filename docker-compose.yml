@@ -34,7 +34,7 @@ services:
 
   # ndt-server is the public facing measurement service. Only ndt7 is enabled.
   ndt-server:
-    image: measurementlab/ndt-server:v0.23.1
+    image: measurementlab/ndt-server:v0.25.2
     profiles: [ndt]
     network_mode: host
     cap_add:
@@ -304,7 +304,7 @@ services:
   # compatible with upstream schemas and safe to upload.
   generate-schemas-ndt7:
     network_mode: host
-    image: measurementlab/ndt-server:v0.22.0
+    image: measurementlab/ndt-server:v0.25.2
     volumes:
       - ./schemas:/schemas
     entrypoint:
