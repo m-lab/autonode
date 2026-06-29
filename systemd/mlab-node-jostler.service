@@ -1,0 +1,66 @@
+[Unit]
+Description=M-Lab jostler (archives results to GCS)
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+# Requires all schemas to be generated (service_completed_successfully) and a
+# successful registration.
+Requires=mlab-node-register-ready.service mlab-node-schemas-ndt7.service mlab-node-schemas-annotation2.service mlab-node-schemas-traceroute.service
+After=mlab-node-register-ready.service mlab-node-schemas-ndt7.service mlab-node-schemas-annotation2.service mlab-node-schemas-traceroute.service
+BindsTo=mlab-node-register.service
+
+[Service]
+Type=exec
+EnvironmentFile=/etc/mlab/mlab-node.env
+Environment=GOOGLE_APPLICATION_CREDENTIALS=/var/lib/mlab/node/service-account-autojoin.json
+ExecStart=/usr/lib/mlab/jostler \
+  -mlab-node-name=@/var/lib/mlab/node/hostname \
+  -gcs-bucket=archive-${PROJECT} \
+  -gcs-data-dir=autoload/v2 \
+  -local-data-dir=/var/lib/mlab/resultsdir \
+  -organization=${ORGANIZATION} \
+  -experiment=ndt \
+  -datatype=ndt7 \
+  -datatype-schema-file=ndt7:/var/lib/mlab/schemas/ndt7.json \
+  -datatype=annotation2 \
+  -datatype-schema-file=annotation2:/var/lib/mlab/schemas/annotation2.json \
+  -datatype=scamper2 \
+  -datatype-schema-file=scamper2:/var/lib/mlab/schemas/scamper2.json \
+  -datatype=hopannotation2 \
+  -datatype-schema-file=hopannotation2:/var/lib/mlab/schemas/hopannotation2.json \
+  -bundle-size-max=20971520 \
+  -bundle-age-max=1h \
+  -missed-age=2h \
+  -missed-interval=5m \
+  -extensions=.json \
+  -upload-schema=false \
+  -verbose \
+  -prometheusx.listen-address=:9991
+Restart=always
+RestartSec=5
+
+# --- hardening ---
+User=mlab-node
+Group=mlab-node
+ReadWritePaths=/var/lib/mlab/resultsdir
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM

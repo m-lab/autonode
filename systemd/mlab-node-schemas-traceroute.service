@@ -1,0 +1,23 @@
+[Unit]
+Description=Generate scamper2 and hopannotation2 JSON schemas
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+# Replaces the generate-schemas-traceroute init container.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/mlab/generate-schemas-traceroute \
+  -scamper2=/var/lib/mlab/schemas/scamper2.json \
+  -hopannotation2=/var/lib/mlab/schemas/hopannotation2.json
+
+# --- hardening ---
+User=mlab-node
+Group=mlab-node
+ReadWritePaths=/var/lib/mlab/schemas
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=

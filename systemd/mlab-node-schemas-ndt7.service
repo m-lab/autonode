@@ -1,0 +1,22 @@
+[Unit]
+Description=Generate ndt7 JSON schema
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+# Replaces the generate-schemas-ndt7 init container. jostler validates uploads
+# against these schemas; ndt-server also requires the ndt7 schema.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/mlab/generate-schemas-ndt7 -ndt7=/var/lib/mlab/schemas/ndt7.json
+
+# --- hardening ---
+User=mlab-node
+Group=mlab-node
+ReadWritePaths=/var/lib/mlab/schemas
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=

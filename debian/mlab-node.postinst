@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+#DEBHELPER#
+
+# Restrict the API key file to the service group. Runs after the debhelper
+# snippets above have created the mlab-node user/group (sysusers).
+if [ "$1" = "configure" ]; then
+    if getent group mlab-node >/dev/null 2>&1; then
+        chown root:mlab-node /etc/mlab/api-key.env || true
+        chmod 0640 /etc/mlab/api-key.env || true
+    fi
+fi
+
+exit 0

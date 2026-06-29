@@ -1,0 +1,13 @@
+#!/bin/sh
+# Wait for a unix socket to appear before starting. `After=` only guarantees the
+# producing service's process has started, not that it has created its socket;
+# this closes that race for the tcpinfo/ipservice sockets.
+set -eu
+
+sock="${1:?usage: wait-socket SOCKET_PATH}"
+for _ in $(seq 1 60); do
+  [ -S "${sock}" ] && exit 0
+  sleep 1
+done
+echo "mlab-node: socket ${sock} did not appear in time" >&2
+exit 1

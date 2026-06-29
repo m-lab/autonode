@@ -1,0 +1,22 @@
+[Unit]
+Description=Generate ndt-server UUID prefix from boot time
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+# Runs once per boot; btime (from /proc/stat) only changes across reboots.
+# Replaces the inline shell entrypoint the ndt-server container used.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/mlab/gen-uuid-prefix
+
+# --- hardening ---
+User=mlab-node
+Group=mlab-node
+ReadWritePaths=/var/lib/mlab/schemas
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=

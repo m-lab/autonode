@@ -1,0 +1,31 @@
+Source: mlab-node
+Section: net
+Priority: optional
+Maintainer: Measurement Lab <support@measurementlab.net>
+Build-Depends:
+ debhelper-compat (= 13),
+ skopeo,
+ jq,
+ file,
+Standards-Version: 4.6.2
+Homepage: https://github.com/m-lab/autonode
+Rules-Requires-Root: no
+
+Package: mlab-node
+Architecture: amd64
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ curl,
+ kmod,
+Description: M-Lab node (autonode) measurement stack
+ Native systemd packaging of the M-Lab "autonode" Network Diagnostic Tool
+ (NDT) measurement platform, replacing the former Docker Compose deployment.
+ .
+ It runs ndt-server and its sidecar services - node registration, heartbeat,
+ uuid-annotator, jostler, traceroute-caller (with scamper) and a Prometheus
+ node exporter - as hardened systemd services confined with systemd's own
+ sandboxing directives. No Docker is required at build or run time.
+ .
+ The component binaries are extracted from M-Lab's pinned container images at
+ build time. The whole stack is controlled atomically through mlab-node.target.

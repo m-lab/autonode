@@ -1,0 +1,54 @@
+[Unit]
+Description=M-Lab heartbeat (reports liveness to the Locate API)
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+Requires=mlab-node-register-ready.service
+After=mlab-node-register-ready.service
+# Soft dependency on ndt-server (compose used service_started): order after it
+# but do not tear heartbeat down if ndt-server restarts.
+Wants=mlab-node-ndt-server.service
+After=mlab-node-ndt-server.service
+# Atomic lifecycle: keystone is register-node.
+BindsTo=mlab-node-register.service
+
+[Service]
+Type=exec
+EnvironmentFile=/etc/mlab/mlab-node.env
+EnvironmentFile=/etc/mlab/api-key.env
+ExecStart=/usr/lib/mlab/heartbeat \
+  -prometheusx.listen-address=:9993 \
+  -experiment=ndt \
+  -hostname=@/var/lib/mlab/node/hostname \
+  -registration-url=file:///var/lib/mlab/node/registration.json \
+  -heartbeat-url=wss://${LOCATE_URL}/v2/platform/heartbeat-jwt \
+  -api-key=${API_KEY} \
+  -token-exchange-url=https://${AUTH_URL}/v0/token/autojoin \
+  -services=ndt/ndt7=ws:///ndt/v7/download,ws:///ndt/v7/upload,wss:///ndt/v7/download,wss:///ndt/v7/upload
+Restart=always
+RestartSec=5
+
+# --- hardening ---
+User=mlab-node
+Group=mlab-node
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM

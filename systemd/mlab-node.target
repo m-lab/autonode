@@ -1,0 +1,16 @@
+[Unit]
+Description=M-Lab node (autonode) measurement stack
+Documentation=https://github.com/m-lab/autonode
+# The target is the single handle for the whole stack, replacing
+# `docker compose up/down`. Starting it pulls in every component; stopping it
+# stops them all (each component is PartOf= this target).
+Wants=mlab-node-register.service
+Wants=mlab-node-ndt-server.service
+Wants=mlab-node-heartbeat.service
+Wants=mlab-node-uuid-annotator.service
+Wants=mlab-node-jostler.service
+Wants=mlab-node-traceroute-caller.service
+Wants=mlab-node-node-exporter.service
+
+[Install]
+WantedBy=multi-user.target

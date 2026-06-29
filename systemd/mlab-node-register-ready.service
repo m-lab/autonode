@@ -1,0 +1,25 @@
+[Unit]
+Description=Wait for M-Lab node registration to be ready
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+Requires=mlab-node-register.service
+After=mlab-node-register.service
+BindsTo=mlab-node-register.service
+# This oneshot gates every dependent component on a successful registration
+# (the register-node :8001/ready endpoint), guaranteeing the hostname,
+# registration.json and service-account files exist before anything reads them.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/mlab/wait-ready http://localhost:8001/ready
+
+# --- hardening ---
+User=mlab-node
+Group=mlab-node
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
