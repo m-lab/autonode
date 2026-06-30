@@ -32,12 +32,22 @@ IMG_TRACEROUTE="measurementlab/traceroute-caller:v0.12.0"
 IMG_REGISTER="measurementlab/autojoin-register:v0.2.13"
 IMG_NODE_EXPORTER="quay.io/prometheus/node-exporter:v1.9.0"
 
+# generate-schemas-ndt7 is built from source rather than extracted: the
+# ndt-server image builds it on Alpine with CGO (musl-dev), so the shipped copy
+# is musl-linked. We rebuild the same pinned source with CGO on the glibc build
+# host, yielding a glibc-dynamic binary (NEEDED: libc.so.6) that runs natively.
+# NDT_GO_TOOLCHAIN must satisfy the `go` directive in that version's go.mod; the
+# system go fetches it on demand (the bare "go 1.25" directive otherwise mis-
+# resolves to a non-existent "go1.25" download).
+NDT_SERVER_SRC="https://github.com/m-lab/ndt-server.git"
+NDT_SERVER_VERSION="v0.25.2"
+NDT_GO_TOOLCHAIN="go1.25.11"
+
 # extraction requests: "image|search-names|dest-name"
 # search-names is a comma-separated list of candidate basenames to locate in the
 # image rootfs (first match wins), to tolerate differing install paths.
 REQUESTS=(
   "${IMG_NDT_SERVER}|ndt-server|ndt-server"
-  "${IMG_NDT_SERVER}|generate-schemas|generate-schemas-ndt7"
   "${IMG_HEARTBEAT}|heartbeat|heartbeat"
   "${IMG_UUID_ANNOTATOR}|uuid-annotator|uuid-annotator"
   "${IMG_UUID_ANNOTATOR_SCHEMA}|generate-schemas|generate-schemas-annotation2"
@@ -49,7 +59,7 @@ REQUESTS=(
   "${IMG_NODE_EXPORTER}|node_exporter,node-exporter|node-exporter"
 )
 
-for tool in skopeo jq tar file; do
+for tool in skopeo jq tar file go git; do
   command -v "${tool}" >/dev/null 2>&1 || {
     echo "ERROR: required build tool '${tool}' not found in PATH" >&2
     exit 1
@@ -141,6 +151,22 @@ for req in "${REQUESTS[@]}"; do
   install -D -m 0755 "${found}" "${OUT_DIR}/${dest}"
   check_binary "${OUT_DIR}/${dest}"
 done
+
+# Build generate-schemas-ndt7 from source (glibc-dynamic, CGO on), since the
+# ndt-server image ships it musl-linked. cmd/generate-schemas is a nested Go
+# module inside the ndt-server repo, so build from within that directory.
+echo ">> building generate-schemas-ndt7 from ${NDT_SERVER_SRC}@${NDT_SERVER_VERSION}"
+SRC_DIR="${WORK_DIR}/ndt-server"
+git clone --quiet --depth 1 --branch "${NDT_SERVER_VERSION}" "${NDT_SERVER_SRC}" "${SRC_DIR}"
+(
+  cd "${SRC_DIR}/cmd/generate-schemas"
+  CGO_ENABLED=1 \
+  GOTOOLCHAIN="${NDT_GO_TOOLCHAIN}" \
+  GOPATH="${WORK_DIR}/go" \
+  GOCACHE="${WORK_DIR}/gocache" \
+    go build -trimpath -o "${OUT_DIR}/generate-schemas-ndt7" .
+)
+check_binary "${OUT_DIR}/generate-schemas-ndt7"
 
 echo
 echo "Staged $(ls -1 "${OUT_DIR}" | wc -l | tr -d ' ') binaries in ${OUT_DIR}"

@@ -7,6 +7,11 @@ Build-Depends:
  skopeo,
  jq,
  file,
+ golang-go,
+ git,
+ ca-certificates,
+ gcc,
+ libc6-dev,
 Standards-Version: 4.6.2
 Homepage: https://github.com/m-lab/autonode
 Rules-Requires-Root: no
@@ -18,7 +23,6 @@ Depends:
  ${misc:Depends},
  curl,
  kmod,
- musl,
 Description: M-Lab node (autonode) measurement stack
  Native systemd packaging of the M-Lab "autonode" Network Diagnostic Tool
  (NDT) measurement platform, replacing the former Docker Compose deployment.
