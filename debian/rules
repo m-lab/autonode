@@ -21,3 +21,9 @@ override_dh_installsystemd:
 # otherwise rewrite them.
 override_dh_strip:
 override_dh_dwz:
+
+# scamper and the static Go binaries are resolved normally. generate-schemas-ndt7
+# is the lone musl-linked binary; dpkg-shlibdeps has no shlibs info for musl, so
+# exclude it here - its runtime requirement is declared as Depends: musl.
+override_dh_shlibdeps:
+	dh_shlibdeps -Xgenerate-schemas-ndt7

@@ -18,6 +18,7 @@ Depends:
  ${misc:Depends},
  curl,
  kmod,
+ musl,
 Description: M-Lab node (autonode) measurement stack
  Native systemd packaging of the M-Lab "autonode" Network Diagnostic Tool
  (NDT) measurement platform, replacing the former Docker Compose deployment.

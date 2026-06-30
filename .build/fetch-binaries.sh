@@ -57,7 +57,9 @@ for tool in skopeo jq tar file; do
 done
 
 WORK_DIR="$(mktemp -d)"
-trap 'rm -rf "${WORK_DIR}"' EXIT
+# Image layers can contain root-owned, mode-000 entries (e.g. var/empty); make
+# the tree writable before removing it so cleanup never fails the script.
+trap 'chmod -R u+rwX "${WORK_DIR}" 2>/dev/null || true; rm -rf "${WORK_DIR}" 2>/dev/null || true' EXIT
 
 # unpack_image IMAGE DEST_ROOTFS
 # Copies the image to a local OCI/dir layout with skopeo and extracts every
@@ -91,7 +93,10 @@ unpack_image() {
   UNPACKED[${image}]=1
 }
 
-# check_binary PATH — abort if the ELF is musl-linked (won't run on Debian).
+# check_binary PATH — classify the ELF. glibc-dynamic and static binaries run on
+# Debian as-is (dh_shlibdeps resolves shared-lib deps). musl-linked binaries run
+# only with the `musl` package installed, so they are flagged (the package
+# declares the dependency) rather than rejected. A non-ELF file is fatal.
 check_binary() {
   local bin="$1" info
   info="$(file -L "${bin}")"
@@ -99,9 +104,7 @@ check_binary() {
     *"statically linked"*) ;;                       # portable, OK
     *"dynamically linked"*)
       if echo "${info}" | grep -q "ld-musl"; then
-        echo "ERROR: ${bin} is musl-linked (Alpine); it will not run on Debian." >&2
-        echo "       Build this component from source or use a Debian package instead." >&2
-        exit 1
+        echo "   WARNING: ${bin##*/} is musl-linked; requires the 'musl' package at runtime." >&2
       fi
       ;;                                            # glibc dynamic, OK (dh_shlibdeps handles deps)
     *"ELF"*) ;;
