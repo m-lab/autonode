@@ -152,6 +152,19 @@ for req in "${REQUESTS[@]}"; do
   check_binary "${OUT_DIR}/${dest}"
 done
 
+# Ship the IPInfo AS-names CSV bundled in the uuid-annotator image. The image
+# provides it via `ENV ASNAME_URL file:///data/asnames.ipinfo.csv`, which the
+# binary reads through flagx.ArgsFromEnv (asname.url <- ASNAME_URL). systemd does
+# not inherit image ENVs, so we ship the same file and pass it via -asname.url.
+ua_rootfs="${WORK_DIR}/rootfs/$(echo "${IMG_UUID_ANNOTATOR}" | tr '/:' '__')"
+asname_src="$(find "${ua_rootfs}" -type f -name 'asnames.ipinfo.csv' 2>/dev/null | head -n1)"
+if [ -z "${asname_src}" ]; then
+  echo "ERROR: asnames.ipinfo.csv not found in ${IMG_UUID_ANNOTATOR}" >&2
+  exit 1
+fi
+install -D -m 0644 "${asname_src}" "${OUT_DIR}/asnames.ipinfo.csv"
+echo "   asnames.ipinfo.csv: $(wc -c <"${OUT_DIR}/asnames.ipinfo.csv" | tr -d ' ') bytes"
+
 # Build generate-schemas-ndt7 from source (glibc-dynamic, CGO on), since the
 # ndt-server image ships it musl-linked. cmd/generate-schemas is a nested Go
 # module inside the ndt-server repo, so build from within that directory.

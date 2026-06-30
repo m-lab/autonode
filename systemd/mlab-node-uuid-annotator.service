@@ -26,6 +26,7 @@ ExecStart=/usr/lib/mlab/uuid-annotator \
   -routeview-v4.url=gs://downloader-${PROJECT}/RouteViewIPv4/current/routeview.pfx2as.gz \
   -routeview-v6.url=gs://downloader-${PROJECT}/RouteViewIPv6/current/routeview.pfx2as.gz \
   -siteinfo.url=file:///var/lib/mlab/node/annotation.json \
+  -asname.url=file:///usr/share/mlab/asnames.ipinfo.csv \
   -hostname=@/var/lib/mlab/node/hostname
 Restart=always
 RestartSec=5
@@ -53,6 +54,8 @@ LockPersonality=yes
 MemoryDenyWriteExecute=yes
 RemoveIPC=yes
 CapabilityBoundingSet=
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# AF_NETLINK is required to enumerate the host's local addresses (the annotator
+# reads them via netlink to annotate the server side of each measurement).
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
 SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM

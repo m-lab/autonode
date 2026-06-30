@@ -45,3 +45,7 @@ config/sysctl.d/90-mlab-node.conf       usr/lib/sysctl.d
 
 # Static content served by ndt-server.
 html/index.html                         usr/share/mlab/html
+
+# IPInfo AS-names CSV (bundled from the uuid-annotator image), read by the
+# uuid-annotator via -asname.url.
+binaries/asnames.ipinfo.csv             usr/share/mlab
