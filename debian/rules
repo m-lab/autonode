@@ -3,6 +3,14 @@
 %:
 	dh $@
 
+# dh_installsysusers is not part of the default dh sequence on debhelper 13.14
+# (unlike dh_installtmpfiles), so invoke it explicitly to create the mlab-node
+# system user from debian/mlab-node.sysusers. Running it here (after dh_install,
+# before dh_installtmpfiles) orders the postinst so the user exists before the
+# tmpfiles directories are chowned to it.
+execute_after_dh_install:
+	dh_installsysusers
+
 # Extract the component binaries from the pinned container images (via skopeo,
 # no Docker daemon) unless they are already staged. This runs as the package
 # "build" step; the binaries are then installed via debian/mlab-node.install.
