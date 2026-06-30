@@ -13,11 +13,10 @@ BindsTo=mlab-node-register.service
 [Service]
 Type=exec
 EnvironmentFile=/etc/mlab/mlab-node.env
-# scamper is shipped alongside traceroute-caller; make it discoverable on PATH.
-Environment=PATH=/usr/lib/mlab:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStartPre=/usr/lib/mlab/wait-socket /run/mlab/sockets/events.sock
 ExecStartPre=/usr/lib/mlab/wait-socket /run/mlab/sockets/uuid-annotator.sock
 ExecStart=/usr/lib/mlab/traceroute-caller \
+  -scamper.bin=/usr/lib/mlab/scamper \
   -prometheusx.listen-address=:9994 \
   -traceroute-output=/var/lib/mlab/resultsdir/ndt/scamper2 \
   -hopannotation-output=/var/lib/mlab/resultsdir/ndt/hopannotation2 \
