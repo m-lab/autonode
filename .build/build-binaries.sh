@@ -9,8 +9,9 @@
 # involved at any point.
 #
 # Required host tools (build-time only): git, go, gcc, make, file.
-# The build host must be linux/amd64 (the package is Architecture: amd64, and
-# the vendored scamper C code is compiled natively).
+# The build host must be linux on amd64 or arm64; the binaries (Go and the
+# vendored scamper C code) are compiled natively for the host architecture,
+# which is also the architecture of the resulting package.
 #
 # Every Go component builds with CGO_ENABLED=0 (static) except ndt-server and
 # its schema generator: ndt-server's bbr package requires cgo on Linux, so
@@ -61,10 +62,13 @@ for tool in git go gcc make file; do
   }
 done
 
-if [ "$(uname -sm)" != "Linux x86_64" ]; then
-  echo "ERROR: this script must run on a linux/amd64 build host (got: $(uname -sm))" >&2
-  exit 1
-fi
+case "$(uname -sm)" in
+  "Linux x86_64"|"Linux aarch64") ;;
+  *)
+    echo "ERROR: this script must run on a linux amd64/arm64 build host (got: $(uname -sm))" >&2
+    exit 1
+    ;;
+esac
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}"' EXIT

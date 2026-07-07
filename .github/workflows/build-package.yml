@@ -1,0 +1,73 @@
+# Builds the mlab-node Debian package natively on amd64 and arm64.
+#
+# arm64 uses GitHub's native ubuntu-24.04-arm runners (free for public
+# repositories) — no QEMU emulation, so the Go and scamper builds run at
+# native speed on both architectures.
+#
+# Every push/PR build uploads the .deb as a workflow artifact; pushing a
+# version tag (v*) additionally attaches the packages to the GitHub Release
+# for that tag.
+name: build-package
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # needed to attach .debs to releases on tag pushes
+
+jobs:
+  build:
+    name: build (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # mk-build-deps installs exactly what debian/control declares in
+      # Build-Depends, so the workflow never drifts from the package metadata.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends devscripts equivs
+          sudo mk-build-deps --install --remove \
+            --tool 'apt-get -y --no-install-recommends' debian/control
+
+      - name: Build package
+        run: dpkg-buildpackage -us -uc -b
+
+      # dpkg-buildpackage writes its output to the parent directory.
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          mv ../mlab-node_*.deb ../mlab-node_*.buildinfo ../mlab-node_*.changes dist/
+          ls -l dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlab-node-${{ matrix.arch }}
+          path: dist/
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 \
+            || gh release create "${GITHUB_REF_NAME}" --generate-notes
+          gh release upload "${GITHUB_REF_NAME}" dist/*.deb --clobber
