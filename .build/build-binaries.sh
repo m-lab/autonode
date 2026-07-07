@@ -35,7 +35,7 @@ OUT_DIR="${REPO_DIR}/binaries"
 # NOTE: the annotation2 schema generator intentionally comes from an older
 # uuid-annotator tag (v0.5.8) than the running annotator (v0.5.10), matching
 # the compose configuration.
-VER_NDT_SERVER="v0.25.2"
+VER_NDT_SERVER="v0.25.3"
 VER_HEARTBEAT="v0.19.1"
 VER_UUID_ANNOTATOR="v0.5.10"
 VER_UUID_ANNOTATOR_SCHEMA="v0.5.8"
