@@ -1,7 +1,7 @@
 .env
 
-# Binaries extracted from container images at build time (see
-# .build/fetch-binaries.sh). Not checked in.
+# Binaries built from source at build time (see
+# .build/build-binaries.sh). Not checked in.
 /binaries/
 
 # Debian build artifacts.

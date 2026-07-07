@@ -28,8 +28,9 @@ metadata. The whole stack is controlled atomically through `mlab-node.target`;
 `register-node` is the keystone — if it goes down, the entire stack is brought
 down with it.
 
-The component binaries are extracted from M-Lab's pinned container images at
-build time (see `.build/fetch-binaries.sh`).
+The component binaries are built from source at build time, at the same
+upstream release tags the pinned M-Lab container images were built from (see
+`.build/build-binaries.sh`).
 
 ## File layout
 
@@ -48,16 +49,17 @@ build time (see `.build/fetch-binaries.sh`).
 
 ## Building the package
 
-Requires `dpkg-buildpackage`, debhelper, and (for binary extraction)
-`skopeo`, `jq`, and `file`:
+Requires `dpkg-buildpackage`, debhelper, `git`, `go`, and a C toolchain
+(`gcc`, `make`) for scamper:
 
 ```sh
 dpkg-buildpackage -us -uc -b
 ```
 
-The build pulls the pinned component binaries from the M-Lab images via skopeo
-(no Docker daemon) and stages them under `binaries/`. The build fails if any
-extracted binary is musl-linked (it would not run on Debian).
+The build clones each component repository at its pinned release tag, compiles
+the Go binaries with `CGO_ENABLED=0` (static, glibc-independent) using a pinned
+Go toolchain, builds the scamper snapshot vendored by traceroute-caller, and
+stages everything under `binaries/`.
 
 ## Installing and configuring
 

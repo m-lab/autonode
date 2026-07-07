@@ -11,11 +11,11 @@
 execute_after_dh_install:
 	dh_installsysusers
 
-# Extract the component binaries from the pinned container images (via skopeo,
-# no Docker daemon) unless they are already staged. This runs as the package
-# "build" step; the binaries are then installed via debian/mlab-node.install.
+# Build the component binaries from source at the pinned upstream release
+# tags unless they are already staged. This runs as the package "build" step;
+# the binaries are then installed via debian/mlab-node.install.
 override_dh_auto_build:
-	if [ ! -e binaries/ndt-server ]; then ./.build/fetch-binaries.sh; fi
+	if [ ! -e binaries/ndt-server ]; then ./.build/build-binaries.sh; fi
 
 # Install the target so it is enabled (auto-start on boot) but not started at
 # install time - the operator must configure /etc/mlab/*.env first. The other
@@ -25,7 +25,7 @@ override_dh_installsystemd:
 	dh_installsystemd --no-start --no-enable
 	dh_installsystemd --no-start --name=mlab-node mlab-node.target
 
-# The shipped binaries are M-Lab's released, tested artifacts; do not strip or
-# otherwise rewrite them.
+# The shipped binaries are built from M-Lab's released, tested sources; do
+# not strip or otherwise rewrite them.
 override_dh_strip:
 override_dh_dwz:

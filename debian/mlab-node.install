@@ -1,4 +1,4 @@
-# Component binaries (extracted from M-Lab images by .build/fetch-binaries.sh).
+# Component binaries (built from source by .build/build-binaries.sh).
 binaries/ndt-server                     usr/lib/mlab
 binaries/heartbeat                      usr/lib/mlab
 binaries/uuid-annotator                 usr/lib/mlab
@@ -46,6 +46,6 @@ config/sysctl.d/90-mlab-node.conf       usr/lib/sysctl.d
 # Static content served by ndt-server.
 html/index.html                         usr/share/mlab/html
 
-# IPInfo AS-names CSV (bundled from the uuid-annotator image), read by the
+# IPInfo AS-names CSV (from the uuid-annotator repo), read by the
 # uuid-annotator via -asname.url.
 binaries/asnames.ipinfo.csv             usr/share/mlab

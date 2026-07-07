@@ -2,7 +2,7 @@ mlab-node (1.0.0) unstable; urgency=medium
 
   * Initial release: native Debian packaging of the M-Lab autonode stack.
     Replaces the Docker Compose deployment with hardened systemd services.
-    Component binaries are extracted from the pinned M-Lab container images at
-    build time; no Docker is required at build or run time.
+    Component binaries are built from source at the pinned upstream release
+    tags at build time; no Docker is required at build or run time.
 
  -- Measurement Lab <support@measurementlab.net>  Mon, 29 Jun 2026 00:00:00 +0000
