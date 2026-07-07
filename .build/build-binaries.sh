@@ -71,16 +71,19 @@ case "$(uname -sm)" in
 esac
 
 WORK_DIR="$(mktemp -d)"
-trap 'rm -rf "${WORK_DIR}"' EXIT
+# Go marks its module cache read-only; chmod before removal so cleanup never
+# fails the build (belt and braces with -modcacherw below).
+trap 'chmod -R u+rwX "${WORK_DIR}" 2>/dev/null || true; rm -rf "${WORK_DIR}" 2>/dev/null || true' EXIT
 
 # Hermetic Go state: do not touch (or depend on) the build host's module
 # cache. CGO is disabled by default (overridden per-build where required);
-# -trimpath aids reproducibility.
+# -trimpath aids reproducibility; -modcacherw keeps the throwaway module
+# cache writable so it can be removed.
 export CGO_ENABLED=0
 export GOTOOLCHAIN="${GO_TOOLCHAIN}"
 export GOPATH="${WORK_DIR}/gopath"
 export GOCACHE="${WORK_DIR}/gocache"
-export GOFLAGS="-trimpath"
+export GOFLAGS="-trimpath -modcacherw"
 
 # clone_at_tag URL TAG DEST — shallow clone of a repo at a release tag.
 # The clone (not a tarball download) provides the commit hash for version
