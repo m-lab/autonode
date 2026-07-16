@@ -13,6 +13,7 @@ StartLimitBurst=5
 
 [Service]
 Type=exec
+EnvironmentFile=/usr/lib/mlab/static.env
 EnvironmentFile=/etc/mlab/mlab-node.env
 EnvironmentFile=/etc/mlab/api-key.env
 ExecStart=/usr/lib/mlab/autojoin-register \

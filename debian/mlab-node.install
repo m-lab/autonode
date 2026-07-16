@@ -14,30 +14,20 @@ binaries/generate-schemas-traceroute    usr/lib/mlab
 # Helper scripts.
 scripts/gen-uuid-prefix                 usr/lib/mlab
 scripts/write-metadata                  usr/lib/mlab
-scripts/wait-ready                      usr/lib/mlab
 scripts/wait-socket                     usr/lib/mlab
 
 # systemd units.
-systemd/mlab-node.target                       lib/systemd/system
-systemd/mlab-node-register.service             lib/systemd/system
-systemd/mlab-node-register-ready.service       lib/systemd/system
-systemd/mlab-node-bbr.service                  lib/systemd/system
-systemd/mlab-node-uuidprefix.service           lib/systemd/system
-systemd/mlab-node-metadata.service             lib/systemd/system
-systemd/mlab-node-schemas-ndt7.service         lib/systemd/system
-systemd/mlab-node-schemas-annotation2.service  lib/systemd/system
-systemd/mlab-node-schemas-traceroute.service   lib/systemd/system
-systemd/mlab-node-ndt-server.service           lib/systemd/system
-systemd/mlab-node-heartbeat.service            lib/systemd/system
-systemd/mlab-node-uuid-annotator.service       lib/systemd/system
-systemd/mlab-node-jostler.service              lib/systemd/system
-systemd/mlab-node-traceroute-caller.service    lib/systemd/system
-systemd/mlab-node-node-exporter.service        lib/systemd/system
+systemd/*.service                       lib/systemd/system
+systemd/*.target                        lib/systemd/system
 
 # Configuration (files under /etc are registered as conffiles automatically).
 config/mlab-node.env                    etc/mlab
 config/api-key.env                      etc/mlab
 config/locate/verify.pub                etc/mlab/locate
+
+# Package-owned constants (not a conffile; loaded by the units before the
+# operator-edited /etc/mlab/mlab-node.env).
+config/static.env                       usr/lib/mlab
 
 # Kernel module + sysctl drop-ins for BBR.
 config/modules-load.d/mlab-node.conf    usr/lib/modules-load.d

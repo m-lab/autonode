@@ -6,7 +6,7 @@
 # without a running Docker daemon: no Docker is required to build the package,
 # and none is required at runtime.
 #
-# Required host tools (build-time only): skopeo, jq, tar, file.
+# Required host tools (build-time only): skopeo, jq, tar, file, go, git.
 #
 # The binaries are version-pinned to the same image tags used by the historical
 # docker-compose deployment, so the package ships the exact binaries M-Lab has
@@ -18,6 +18,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 OUT_DIR="${REPO_DIR}/binaries"
+
+# The staged tree is fresh only if it was produced by this exact script
+# (the version pins live in it): the stamp records the script's hash and is
+# written only after a fully successful run. Editing the script (e.g. bumping
+# a pinned tag) or an interrupted fetch invalidates it.
+STAMP_FILE="${OUT_DIR}/.fetch-stamp"
+SCRIPT_HASH="$(sha256sum "${BASH_SOURCE[0]}" | awk '{print $1}')"
+if [ "$(cat "${STAMP_FILE}" 2>/dev/null)" = "${SCRIPT_HASH}" ]; then
+  echo "binaries/ already staged by this script version; skipping fetch"
+  exit 0
+fi
 
 # Image versions. These mirror the tags pinned in the original docker-compose.yml.
 # NOTE: the annotation2 schema generator intentionally comes from an older
@@ -40,23 +51,29 @@ IMG_NODE_EXPORTER="quay.io/prometheus/node-exporter:v1.9.0"
 # system go fetches it on demand (the bare "go 1.25" directive otherwise mis-
 # resolves to a non-existent "go1.25" download).
 NDT_SERVER_SRC="https://github.com/m-lab/ndt-server.git"
-NDT_SERVER_VERSION="v0.25.2"
+NDT_SERVER_VERSION="${IMG_NDT_SERVER##*:}"
 NDT_GO_TOOLCHAIN="go1.25.11"
 
-# extraction requests: "image|search-names|dest-name"
+# extraction requests: "image|search-names|dest-name|type"
 # search-names is a comma-separated list of candidate basenames to locate in the
-# image rootfs (first match wins), to tolerate differing install paths.
+# image rootfs (first match wins), to tolerate differing install paths. type is
+# "bin" (installed 0755, ELF-checked) or "data" (installed 0644, unchecked).
 REQUESTS=(
-  "${IMG_NDT_SERVER}|ndt-server|ndt-server"
-  "${IMG_HEARTBEAT}|heartbeat|heartbeat"
-  "${IMG_UUID_ANNOTATOR}|uuid-annotator|uuid-annotator"
-  "${IMG_UUID_ANNOTATOR_SCHEMA}|generate-schemas|generate-schemas-annotation2"
-  "${IMG_JOSTLER}|jostler|jostler"
-  "${IMG_TRACEROUTE}|traceroute-caller|traceroute-caller"
-  "${IMG_TRACEROUTE}|generate-schemas|generate-schemas-traceroute"
-  "${IMG_TRACEROUTE}|scamper|scamper"
-  "${IMG_REGISTER}|register,autojoin-register|autojoin-register"
-  "${IMG_NODE_EXPORTER}|node_exporter,node-exporter|node-exporter"
+  "${IMG_NDT_SERVER}|ndt-server|ndt-server|bin"
+  "${IMG_HEARTBEAT}|heartbeat|heartbeat|bin"
+  "${IMG_UUID_ANNOTATOR}|uuid-annotator|uuid-annotator|bin"
+  "${IMG_UUID_ANNOTATOR_SCHEMA}|generate-schemas|generate-schemas-annotation2|bin"
+  "${IMG_JOSTLER}|jostler|jostler|bin"
+  "${IMG_TRACEROUTE}|traceroute-caller|traceroute-caller|bin"
+  "${IMG_TRACEROUTE}|generate-schemas|generate-schemas-traceroute|bin"
+  "${IMG_TRACEROUTE}|scamper|scamper|bin"
+  "${IMG_REGISTER}|register,autojoin-register|autojoin-register|bin"
+  "${IMG_NODE_EXPORTER}|node_exporter,node-exporter|node-exporter|bin"
+  # The IPInfo AS-names CSV bundled in the uuid-annotator image. The image
+  # provides it via `ENV ASNAME_URL file:///data/asnames.ipinfo.csv`, which the
+  # binary reads through flagx.ArgsFromEnv (asname.url <- ASNAME_URL). systemd
+  # does not inherit image ENVs, so we ship the file and pass it via -asname.url.
+  "${IMG_UUID_ANNOTATOR}|asnames.ipinfo.csv|asnames.ipinfo.csv|data"
 )
 
 for tool in skopeo jq tar file go git; do
@@ -71,13 +88,16 @@ WORK_DIR="$(mktemp -d)"
 # the tree writable before removing it so cleanup never fails the script.
 trap 'chmod -R u+rwX "${WORK_DIR}" 2>/dev/null || true; rm -rf "${WORK_DIR}" 2>/dev/null || true' EXIT
 
+# mangle IMAGE — filesystem-safe directory name for an image reference.
+mangle() { echo "$1" | tr '/:' '__'; }
+
 # unpack_image IMAGE DEST_ROOTFS
 # Copies the image to a local OCI/dir layout with skopeo and extracts every
 # layer (in manifest order) into DEST_ROOTFS to reconstruct the image rootfs.
 declare -A UNPACKED=()
 unpack_image() {
   local image="$1" rootfs="$2"
-  local imgdir="${WORK_DIR}/img/$(echo "${image}" | tr '/:' '__')"
+  local imgdir="${WORK_DIR}/img/$(mangle "${image}")"
 
   if [ -n "${UNPACKED[${image}]:-}" ]; then
     return 0
@@ -104,9 +124,10 @@ unpack_image() {
 }
 
 # check_binary PATH — classify the ELF. glibc-dynamic and static binaries run on
-# Debian as-is (dh_shlibdeps resolves shared-lib deps). musl-linked binaries run
-# only with the `musl` package installed, so they are flagged (the package
-# declares the dependency) rather than rejected. A non-ELF file is fatal.
+# Debian as-is (dh_shlibdeps resolves shared-lib deps). A musl-linked (Alpine)
+# binary would not run on the target, so it aborts the build; rebuild such
+# outliers from source instead (see generate-schemas-ndt7 below). A non-ELF
+# file is fatal too.
 check_binary() {
   local bin="$1" info
   info="$(file -L "${bin}")"
@@ -114,7 +135,9 @@ check_binary() {
     *"statically linked"*) ;;                       # portable, OK
     *"dynamically linked"*)
       if echo "${info}" | grep -q "ld-musl"; then
-        echo "   WARNING: ${bin##*/} is musl-linked; requires the 'musl' package at runtime." >&2
+        echo "ERROR: ${bin##*/} is musl-linked and would not run on the target;" >&2
+        echo "       rebuild it from source instead (see generate-schemas-ndt7)." >&2
+        exit 1
       fi
       ;;                                            # glibc dynamic, OK (dh_shlibdeps handles deps)
     *"ELF"*) ;;
@@ -130,8 +153,8 @@ rm -rf "${OUT_DIR}"
 mkdir -p "${OUT_DIR}"
 
 for req in "${REQUESTS[@]}"; do
-  IFS='|' read -r image names dest <<<"${req}"
-  rootfs="${WORK_DIR}/rootfs/$(echo "${image}" | tr '/:' '__')"
+  IFS='|' read -r image names dest type <<<"${req}"
+  rootfs="${WORK_DIR}/rootfs/$(mangle "${image}")"
   unpack_image "${image}" "${rootfs}"
 
   found=""
@@ -148,22 +171,14 @@ for req in "${REQUESTS[@]}"; do
     exit 1
   fi
 
-  install -D -m 0755 "${found}" "${OUT_DIR}/${dest}"
-  check_binary "${OUT_DIR}/${dest}"
+  if [ "${type}" = "bin" ]; then
+    install -D -m 0755 "${found}" "${OUT_DIR}/${dest}"
+    check_binary "${OUT_DIR}/${dest}"
+  else
+    install -D -m 0644 "${found}" "${OUT_DIR}/${dest}"
+    echo "   ${dest}: $(wc -c <"${OUT_DIR}/${dest}" | tr -d ' ') bytes"
+  fi
 done
-
-# Ship the IPInfo AS-names CSV bundled in the uuid-annotator image. The image
-# provides it via `ENV ASNAME_URL file:///data/asnames.ipinfo.csv`, which the
-# binary reads through flagx.ArgsFromEnv (asname.url <- ASNAME_URL). systemd does
-# not inherit image ENVs, so we ship the same file and pass it via -asname.url.
-ua_rootfs="${WORK_DIR}/rootfs/$(echo "${IMG_UUID_ANNOTATOR}" | tr '/:' '__')"
-asname_src="$(find "${ua_rootfs}" -type f -name 'asnames.ipinfo.csv' 2>/dev/null | head -n1)"
-if [ -z "${asname_src}" ]; then
-  echo "ERROR: asnames.ipinfo.csv not found in ${IMG_UUID_ANNOTATOR}" >&2
-  exit 1
-fi
-install -D -m 0644 "${asname_src}" "${OUT_DIR}/asnames.ipinfo.csv"
-echo "   asnames.ipinfo.csv: $(wc -c <"${OUT_DIR}/asnames.ipinfo.csv" | tr -d ' ') bytes"
 
 # Build generate-schemas-ndt7 from source (glibc-dynamic, CGO on), since the
 # ndt-server image ships it musl-linked. cmd/generate-schemas is a nested Go
@@ -181,5 +196,6 @@ git clone --quiet --depth 1 --branch "${NDT_SERVER_VERSION}" "${NDT_SERVER_SRC}"
 )
 check_binary "${OUT_DIR}/generate-schemas-ndt7"
 
+printf '%s\n' "${SCRIPT_HASH}" > "${STAMP_FILE}"
 echo
-echo "Staged $(ls -1 "${OUT_DIR}" | wc -l | tr -d ' ') binaries in ${OUT_DIR}"
+echo "Staged $(ls -1 "${OUT_DIR}" | wc -l | tr -d ' ') artifacts in ${OUT_DIR}"

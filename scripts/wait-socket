@@ -1,13 +1,19 @@
 #!/bin/sh
-# Wait for a unix socket to appear before starting. `After=` only guarantees the
-# producing service's process has started, not that it has created its socket;
-# this closes that race for the tcpinfo/ipservice sockets.
+# Wait for one or more unix sockets to appear before starting. `After=` only
+# guarantees the producing service's process has started, not that it has
+# created its socket; this closes that race for the tcpinfo/ipservice sockets.
+# All sockets are watched in the same loop, so the timeout is a single 60s
+# budget rather than 60s per socket.
 set -eu
 
-sock="${1:?usage: wait-socket SOCKET_PATH}"
+[ $# -ge 1 ] || { echo "usage: wait-socket SOCKET_PATH..." >&2; exit 2; }
 for _ in $(seq 1 60); do
-  [ -S "${sock}" ] && exit 0
+  ok=1
+  for sock in "$@"; do
+    [ -S "${sock}" ] || { ok=0; break; }
+  done
+  [ "${ok}" -eq 1 ] && exit 0
   sleep 1
 done
-echo "mlab-node: socket ${sock} did not appear in time" >&2
+echo "mlab-node: socket(s) $* did not appear in time" >&2
 exit 1

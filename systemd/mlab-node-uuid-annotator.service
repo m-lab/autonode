@@ -12,6 +12,7 @@ BindsTo=mlab-node-register.service
 
 [Service]
 Type=exec
+EnvironmentFile=/usr/lib/mlab/static.env
 EnvironmentFile=/etc/mlab/mlab-node.env
 Environment=GOOGLE_APPLICATION_CREDENTIALS=/var/lib/mlab/node/service-account-autojoin.json
 # Wait for ndt-server's events socket, and clear any stale annotator socket.

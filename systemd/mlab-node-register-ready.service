@@ -2,7 +2,6 @@
 Description=Wait for M-Lab node registration to be ready
 Documentation=https://github.com/m-lab/autonode
 PartOf=mlab-node.target
-Requires=mlab-node-register.service
 After=mlab-node-register.service
 BindsTo=mlab-node-register.service
 # This oneshot gates every dependent component on a successful registration
@@ -12,7 +11,11 @@ BindsTo=mlab-node-register.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/lib/mlab/wait-ready http://localhost:8001/ready
+# Poll until registration reports ready: retry connection-refused (register
+# still starting) and HTTP errors (not yet registered) for up to ~120s.
+ExecStart=/usr/bin/curl -fsS -o /dev/null \
+  --retry 60 --retry-delay 2 --retry-connrefused --retry-all-errors \
+  http://localhost:8001/ready
 
 # --- hardening ---
 User=mlab-node

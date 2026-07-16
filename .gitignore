@@ -1,4 +1,5 @@
 .env
+.DS_Store
 
 # Binaries extracted from container images at build time (see
 # .build/fetch-binaries.sh). Not checked in.

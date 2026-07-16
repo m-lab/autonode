@@ -13,3 +13,8 @@ d /var/lib/mlab/autocert        2750 mlab-node mlab-node -
 d /run/mlab                     0755 mlab-node mlab-node -
 d /run/mlab/sockets             2770 mlab-node mlab-node -
 d /run/mlab/metadata            2755 mlab-node mlab-node -
+
+# Restrict the API key conffile to the service group (shipped 0644 root:root by
+# dpkg). Applied on install by the debhelper tmpfiles snippet, which runs after
+# the sysusers snippet has created the mlab-node group, and re-applied each boot.
+z /etc/mlab/api-key.env         0640 root mlab-node -

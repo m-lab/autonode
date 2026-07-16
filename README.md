@@ -35,7 +35,7 @@ build time (see `.build/fetch-binaries.sh`).
 
 | Path | Contents |
 |---|---|
-| `/usr/lib/mlab/` | component binaries and helper scripts |
+| `/usr/lib/mlab/` | component binaries, helper scripts, package-owned constants (`static.env`) |
 | `/etc/mlab/mlab-node.env` | configuration (non-secret) |
 | `/etc/mlab/api-key.env` | M-Lab API key (`0640 root:mlab-node`) |
 | `/etc/mlab/locate/verify.pub` | Locate token verification key |
@@ -48,8 +48,9 @@ build time (see `.build/fetch-binaries.sh`).
 
 ## Building the package
 
-Requires `dpkg-buildpackage`, debhelper, and (for binary extraction)
-`skopeo`, `jq`, and `file`:
+Requires `dpkg-buildpackage`, debhelper, `skopeo`, `jq`, and `file` for binary
+extraction, plus `golang-go`, `git`, and a C toolchain to build
+`generate-schemas-ndt7` from source:
 
 ```sh
 dpkg-buildpackage -us -uc -b

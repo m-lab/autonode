@@ -28,13 +28,12 @@ RestartSec=5
 # --- hardening ---
 # node-exporter shares nothing with the rest of the stack and needs no state, so
 # it runs under an ephemeral DynamicUser. It only reads world-readable /proc and
-# /sys, so it needs no capabilities and no write access.
+# /sys, so it needs no capabilities and no write access. ProtectProc= is left at
+# its default: the collectors read system-wide /proc files.
 DynamicUser=yes
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
-ProtectProc=default
-ProcSubset=all
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectKernelLogs=yes

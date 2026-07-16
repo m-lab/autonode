@@ -2,7 +2,6 @@
 Description=Write external IP metadata files for traceroute-caller
 Documentation=https://github.com/m-lab/autonode
 PartOf=mlab-node.target
-RequiresMountsFor=/run/mlab
 # Replaces the docker-compose "configs" that injected ${IPV4}/${IPV6} as the
 # /metadata/external-ip[v6] files. Regenerated each boot (the files live on the
 # /run tmpfs).
