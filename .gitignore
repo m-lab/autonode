@@ -1,9 +1,10 @@
 .env
 .DS_Store
 
-# Binaries extracted from container images at build time (see
-# .build/fetch-binaries.sh). Not checked in.
+# Binaries built from the pinned upstream sources at build time (see
+# .build/build-binaries.sh). Not checked in.
 /binaries/
+/.build-work.*
 
 # Debian build artifacts.
 /debian/mlab-node/

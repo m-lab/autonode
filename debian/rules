@@ -11,12 +11,12 @@
 execute_after_dh_install:
 	dh_installsysusers
 
-# Extract the component binaries from the pinned container images (via skopeo,
-# no Docker daemon). The script owns its own caching: it exits immediately if
-# binaries/ was staged by the current script version (stamp file), and
-# re-fetches after any script change (e.g. a version bump) or interrupted run.
+# Build the component binaries from the pinned upstream sources. The script
+# owns its own caching: it exits immediately if binaries/ was staged by the
+# current script version (stamp file), and rebuilds after any script change
+# (e.g. a version bump) or interrupted run.
 override_dh_auto_build:
-	./.build/fetch-binaries.sh
+	./.build/build-binaries.sh
 
 # Install the target so it is enabled (auto-start on boot) but not started at
 # install time - the operator must configure /etc/mlab/*.env first. The other
@@ -26,7 +26,8 @@ override_dh_auto_build:
 override_dh_installsystemd:
 	dh_installsystemd --no-start
 
-# The shipped binaries are M-Lab's released, tested artifacts; do not strip or
-# otherwise rewrite them.
+# Ship the binaries exactly as built from the pinned upstream sources; do not
+# strip or otherwise rewrite them (Go binaries gain little from stripping, and
+# dwz does not apply).
 override_dh_strip:
 override_dh_dwz:

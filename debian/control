@@ -4,8 +4,6 @@ Priority: optional
 Maintainer: Measurement Lab <support@measurementlab.net>
 Build-Depends:
  debhelper-compat (= 13),
- skopeo,
- jq,
  file,
  golang-go,
  git,
@@ -32,5 +30,6 @@ Description: M-Lab node (autonode) measurement stack
  node exporter - as hardened systemd services confined with systemd's own
  sandboxing directives. No Docker is required at build or run time.
  .
- The component binaries are extracted from M-Lab's pinned container images at
- build time. The whole stack is controlled atomically through mlab-node.target.
+ The component binaries are built at package build time from the same pinned
+ upstream sources M-Lab releases. The whole stack is controlled atomically
+ through mlab-node.target.

@@ -28,8 +28,9 @@ metadata. The whole stack is controlled atomically through `mlab-node.target`;
 `register-node` is the keystone — if it goes down, the entire stack is brought
 down with it.
 
-The component binaries are extracted from M-Lab's pinned container images at
-build time (see `.build/fetch-binaries.sh`).
+The component binaries are built from the pinned upstream sources at package
+build time (see `.build/build-binaries.sh`) — the same version tags the
+container images were built from.
 
 ## File layout
 
@@ -48,17 +49,17 @@ build time (see `.build/fetch-binaries.sh`).
 
 ## Building the package
 
-Requires `dpkg-buildpackage`, debhelper, `skopeo`, `jq`, and `file` for binary
-extraction, plus `golang-go`, `git`, and a C toolchain to build
-`generate-schemas-ndt7` from source:
+Requires `dpkg-buildpackage`, debhelper, `golang-go`, `git`, `file`, and a C
+toolchain (for scamper and the cgo builds), plus network access to clone the
+pinned sources and fetch Go modules:
 
 ```sh
 dpkg-buildpackage -us -uc -b
 ```
 
-The build pulls the pinned component binaries from the M-Lab images via skopeo
-(no Docker daemon) and stages them under `binaries/`. The build fails if any
-extracted binary is musl-linked (it would not run on Debian).
+The build clones each component's repository at its pinned tag, builds the
+binaries (replicating the upstream image builds' flags), and stages them under
+`binaries/`. No container images or Docker are involved.
 
 ## Installing and configuring
 

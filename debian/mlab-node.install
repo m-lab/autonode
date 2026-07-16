@@ -1,4 +1,4 @@
-# Component binaries (extracted from M-Lab images by .build/fetch-binaries.sh).
+# Component binaries (built from the pinned sources by .build/build-binaries.sh).
 binaries/ndt-server                     usr/lib/mlab
 binaries/heartbeat                      usr/lib/mlab
 binaries/uuid-annotator                 usr/lib/mlab
