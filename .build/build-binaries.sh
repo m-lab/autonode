@@ -124,12 +124,17 @@ short_commit() { git -C "$1" log -1 --format=%h; }
 # against their own go.mod.
 go_build() {
   local src="$1" pkg="$2" dest="$3" cgo="$4" ldflags="${5:-}" toolchain="${6:-}"
+  # cgo builds link dynamically anyway, so build them PIE for ASLR (lintian:
+  # hardening-no-pie); pure-Go builds stay internally-linked static, where
+  # -buildmode=pie does not apply.
+  local pie=""
+  [ "${cgo}" = "1" ] && pie="-buildmode=pie"
   echo ">> building ${dest} (${src##*/} ${pkg})"
   (
     cd "${src}/${pkg}"
     CGO_ENABLED="${cgo}" \
     GOTOOLCHAIN="${toolchain:-auto}" \
-      go build ${ldflags:+-ldflags "${ldflags}"} -o "${OUT_DIR}/${dest}" .
+      go build ${pie} ${ldflags:+-ldflags "${ldflags}"} -o "${OUT_DIR}/${dest}" .
   )
   check_binary "${OUT_DIR}/${dest}"
 }

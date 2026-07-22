@@ -1,0 +1,7 @@
+# The pure-Go binaries are statically linked by nature (internal linking, no
+# cgo); this is how upstream builds and ships them.
+statically-linked-binary [usr/lib/mlab/*]
+
+# Shipped unstripped on purpose (debian/rules overrides dh_strip): Go binaries
+# gain little from stripping and the symbols aid debugging in the field.
+unstripped-binary-or-object [usr/lib/mlab/*]

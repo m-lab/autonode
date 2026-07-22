@@ -16,9 +16,11 @@ scripts/gen-uuid-prefix                 usr/lib/mlab
 scripts/write-metadata                  usr/lib/mlab
 scripts/wait-socket                     usr/lib/mlab
 
-# systemd units.
-systemd/*.service                       lib/systemd/system
-systemd/*.target                        lib/systemd/system
+# systemd units. Installed under the canonical /usr path: on merged-/usr
+# systems, shipping files under the aliased /lib is a policy violation
+# (lintian: aliased-location).
+systemd/*.service                       usr/lib/systemd/system
+systemd/*.target                        usr/lib/systemd/system
 
 # Configuration (files under /etc are registered as conffiles automatically).
 config/mlab-node.env                    etc/mlab

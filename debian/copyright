@@ -3,16 +3,17 @@ Upstream-Name: autonode
 Source: https://github.com/m-lab/autonode
 
 Files: *
-Copyright: Measurement Lab
+Copyright: 2025-2026 Measurement Lab
 License: Apache-2.0
 
 Files: binaries/*
-Copyright: Measurement Lab and the Prometheus Authors
+Copyright: 2025-2026 Measurement Lab and the Prometheus Authors
 Comment:
- These binaries are extracted at build time from M-Lab's released container
- images (and the Prometheus node_exporter image). They are not part of the
- source in this repository. Each component is licensed under its own upstream
- license; see the respective M-Lab and Prometheus projects.
+ These binaries are built at package build time from the pinned upstream
+ sources by .build/build-binaries.sh. They are not part of the source in this
+ repository. Each component is licensed under its own upstream license; see
+ the respective M-Lab, Prometheus and scamper projects (scamper, vendored in
+ m-lab/traceroute-caller, is GPL-2 licensed).
 License: Apache-2.0
 
 License: Apache-2.0
