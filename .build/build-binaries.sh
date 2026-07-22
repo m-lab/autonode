@@ -13,26 +13,30 @@
 # anywhere Go and gcc do.
 #
 # Each Go component replicates its upstream Dockerfile's build: same package
-# path, same CGO setting, same -ldflags (version stamps). The one divergence is
-# ndt-server: upstream builds it CGO+musl-static on Alpine; here it is built
-# CGO+glibc-dynamic, which runs natively on Debian (dh_shlibdeps picks up the
-# libc dependency).
+# path, same CGO setting, same -ldflags (version stamps). Divergences from
+# upstream:
+#   - ndt-server is built CGO+glibc-dynamic instead of CGO+musl-static on
+#     Alpine; it runs natively on Debian (dh_shlibdeps picks up the libc dep).
+#   - all binaries are linked with -s -w (no symbol table, no DWARF), roughly
+#     halving them. Panic backtraces stay fully symbolized (Go's pclntab is
+#     unaffected); only delve/pprof against the shipped binary lose fidelity.
+#
+# Caching: every component carries its own stamp under binaries/.stamps/,
+# keyed on its recipe (pinned tag, package path, build flags, toolchain
+# versions). Re-running the script rebuilds only components whose recipe
+# changed — bumping one version pin rebuilds that one component. Delete
+# binaries/ (or bump STAMP_SCHEMA below) to force a full rebuild.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 OUT_DIR="${REPO_DIR}/binaries"
+STAMP_DIR="${OUT_DIR}/.stamps"
 
-# The staged tree is fresh only if it was produced by this exact script
-# (the version pins live in it): the stamp records the script's hash and is
-# written only after a fully successful run. Editing the script (e.g. bumping
-# a pinned tag) or an interrupted build invalidates it.
-STAMP_FILE="${OUT_DIR}/.build-stamp"
-SCRIPT_HASH="$(sha256sum "${BASH_SOURCE[0]}" | awk '{print $1}')"
-if [ "$(cat "${STAMP_FILE}" 2>/dev/null)" = "${SCRIPT_HASH}" ]; then
-  echo "binaries/ already staged by this script version; skipping build"
-  exit 0
-fi
+# Salt mixed into every recipe key. Bump it to invalidate all cached
+# components at once, e.g. when the build logic itself changes in a way the
+# per-component keys cannot see.
+STAMP_SCHEMA=1
 
 # Version pins. These mirror the image tags pinned in the original
 # docker-compose.yml (each image was built from the repo tag of the same name).
@@ -66,6 +70,12 @@ for tool in go git gcc make file; do
   }
 done
 
+# Toolchain fingerprints for the recipe keys: a Go upgrade invalidates every
+# component; a gcc/glibc change only the native (cgo/C) ones, whose output —
+# including the computed libc6 dependency — depends on the host toolchain.
+GO_VERSION="$(go version | awk '{print $3}')"
+NATIVE_TOOLCHAIN="gcc=$(gcc -dumpfullversion) libc=$(getconf GNU_LIBC_VERSION)"
+
 # The work tree (sources + Go module/build caches) runs to a couple of GB, so
 # keep it inside the repo rather than under /tmp, which is often a small tmpfs.
 # The Go module cache is written read-only; restore write permission before
@@ -73,11 +83,50 @@ done
 WORK_DIR="$(mktemp -d "${REPO_DIR}/.build-work.XXXXXX")"
 trap 'chmod -R u+rwX "${WORK_DIR}" 2>/dev/null || true; rm -rf "${WORK_DIR}" 2>/dev/null || true' EXIT
 
-# Hermetic Go state: modules, build cache and on-demand toolchains all live
-# under WORK_DIR, so a build never depends on (or pollutes) the host's Go dirs.
-export GOPATH="${WORK_DIR}/go"
-export GOCACHE="${WORK_DIR}/gocache"
+# Hermetic Go state by default: modules, build cache and on-demand toolchains
+# all live under WORK_DIR, so a build never depends on (or pollutes) the
+# host's Go dirs. CI overrides AUTONODE_GOPATH/AUTONODE_GOCACHE to persistent
+# directories so modules and compiled packages survive across runs (only
+# WORK_DIR is removed by the EXIT trap).
+export GOPATH="${AUTONODE_GOPATH:-${WORK_DIR}/go}"
+export GOCACHE="${AUTONODE_GOCACHE:-${WORK_DIR}/gocache}"
 export GOFLAGS="-trimpath -mod=readonly"
+
+BUILT=0
+SKIPPED=0
+
+# recipe_key ARGS... — cache key for one component: a hash of everything that
+# determines its output except the sources themselves, which are pinned by
+# tag and therefore immutable.
+recipe_key() {
+  printf '%s\n' "schema=${STAMP_SCHEMA}" "go=${GO_VERSION}" \
+    "goflags=${GOFLAGS}" "$@" | sha256sum | awk '{print $1}'
+}
+
+# needs_build NAME KEY OUTPUTS... — decide whether NAME must be (re)built.
+# Only a matching stamp with every staged output present counts as cached.
+needs_build() {
+  local name="$1" key="$2" out ok=1
+  shift 2
+  [ "$(cat "${STAMP_DIR}/${name}" 2>/dev/null)" = "${key}" ] || ok=0
+  for out in "$@"; do
+    [ -e "${OUT_DIR}/${out}" ] || ok=0
+  done
+  if [ "${ok}" = 1 ]; then
+    echo "   ${name}: cached, skipping"
+    SKIPPED=$((SKIPPED + 1))
+    return 1
+  fi
+  rm -f "${STAMP_DIR}/${name}"
+  return 0
+}
+
+# stamp NAME KEY — record a successful component build.
+stamp() {
+  mkdir -p "${STAMP_DIR}"
+  printf '%s\n' "$2" > "${STAMP_DIR}/$1"
+  BUILT=$((BUILT + 1))
+}
 
 # check_binary PATH — sanity-check the produced ELF. Everything is built
 # against glibc (static or dynamic) by construction; this catches accidental
@@ -124,6 +173,8 @@ short_commit() { git -C "$1" log -1 --format=%h; }
 # against their own go.mod.
 go_build() {
   local src="$1" pkg="$2" dest="$3" cgo="$4" ldflags="${5:-}" toolchain="${6:-}"
+  # Ship stripped: -s (symbol table) -w (DWARF); see the header comment.
+  ldflags="-s -w${ldflags:+ ${ldflags}}"
   # cgo builds link dynamically anyway, so build them PIE for ASLR (lintian:
   # hardening-no-pie); pure-Go builds stay internally-linked static, where
   # -buildmode=pie does not apply.
@@ -134,58 +185,87 @@ go_build() {
     cd "${src}/${pkg}"
     CGO_ENABLED="${cgo}" \
     GOTOOLCHAIN="${toolchain:-auto}" \
-      go build ${pie} ${ldflags:+-ldflags "${ldflags}"} -o "${OUT_DIR}/${dest}" .
+      go build ${pie} -ldflags "${ldflags}" -o "${OUT_DIR}/${dest}" .
   )
   check_binary "${OUT_DIR}/${dest}"
 }
 
-rm -rf "${OUT_DIR}"
+# build_go DEST URL TAG PKG_DIR CGO [LDFLAGS_TEMPLATE [GOTOOLCHAIN]]
+# Cached build of one Go component: skipped entirely (including the clone)
+# when its recipe key matches the stamp of a previous run. LDFLAGS_TEMPLATE
+# may reference @COMMIT@ / @COMMIT_FULL@, replaced with the short/full hash of
+# the tagged commit — a pure function of TAG, hence not part of the key.
+build_go() {
+  local dest="$1" url="$2" tag="$3" pkg="$4" cgo="$5" tmpl="${6:-}" toolchain="${7:-}"
+  local native=""
+  [ "${cgo}" = "1" ] && native="${NATIVE_TOOLCHAIN}"
+  local key
+  key="$(recipe_key "url=${url}" "tag=${tag}" "pkg=${pkg}" "cgo=${cgo}" \
+    "ldflags=${tmpl}" "toolchain=${toolchain}" "native=${native}")"
+  needs_build "${dest}" "${key}" "${dest}" || return 0
+  local src
+  src="$(clone_repo "$(basename "${url}" .git)" "${url}" "${tag}")"
+  local ldflags="${tmpl//@COMMIT@/$(short_commit "${src}")}"
+  ldflags="${ldflags//@COMMIT_FULL@/$(git -C "${src}" log -1 --format=%H)}"
+  go_build "${src}" "${pkg}" "${dest}" "${cgo}" "${ldflags}" "${toolchain}"
+  stamp "${dest}" "${key}"
+}
+
 mkdir -p "${OUT_DIR}"
+rm -f "${OUT_DIR}/.build-stamp" # pre-.stamps/ whole-script stamp, now unused
 
 # --- ndt-server (+ ndt7 schema generator) -----------------------------------
 # Upstream build.sh: CGO on (the ndt5 BBR code is cgo), stamped with the tag
 # and short commit. cmd/generate-schemas is a nested Go module, so it is built
 # from within its own directory.
-src="$(clone_repo ndt-server https://github.com/m-lab/ndt-server.git "${NDT_SERVER_VERSION}")"
-go_build "${src}" . ndt-server 1 \
+NDT_SERVER_URL="https://github.com/m-lab/ndt-server.git"
+build_go ndt-server "${NDT_SERVER_URL}" "${NDT_SERVER_VERSION}" . 1 \
   "-X github.com/m-lab/ndt-server/version.Version=${NDT_SERVER_VERSION} \
-   -X github.com/m-lab/go/prometheusx.GitShortCommit=$(short_commit "${src}")" \
+   -X github.com/m-lab/go/prometheusx.GitShortCommit=@COMMIT@" \
   "${NDT_GO_TOOLCHAIN}"
-go_build "${src}" cmd/generate-schemas generate-schemas-ndt7 1 "" "${NDT_GO_TOOLCHAIN}"
+build_go generate-schemas-ndt7 "${NDT_SERVER_URL}" "${NDT_SERVER_VERSION}" \
+  cmd/generate-schemas 1 "" "${NDT_GO_TOOLCHAIN}"
 
 # --- heartbeat (from m-lab/locate) -------------------------------------------
-src="$(clone_repo locate https://github.com/m-lab/locate.git "${LOCATE_VERSION}")"
-go_build "${src}" cmd/heartbeat heartbeat 0 \
-  "-X github.com/m-lab/go/prometheusx.GitShortCommit=$(short_commit "${src}")"
+build_go heartbeat https://github.com/m-lab/locate.git "${LOCATE_VERSION}" \
+  cmd/heartbeat 0 \
+  "-X github.com/m-lab/go/prometheusx.GitShortCommit=@COMMIT@"
 
 # --- uuid-annotator (+ annotation2 schema generator, older pin) ---------------
-src="$(clone_repo uuid-annotator https://github.com/m-lab/uuid-annotator.git "${UUID_ANNOTATOR_VERSION}")"
-go_build "${src}" . uuid-annotator 0 \
-  "-X github.com/m-lab/go/prometheusx.GitShortCommit=$(short_commit "${src}")"
+UUID_ANNOTATOR_URL="https://github.com/m-lab/uuid-annotator.git"
+build_go uuid-annotator "${UUID_ANNOTATOR_URL}" "${UUID_ANNOTATOR_VERSION}" . 0 \
+  "-X github.com/m-lab/go/prometheusx.GitShortCommit=@COMMIT@"
 
 # The IPInfo AS-names CSV the annotator reads via -asname.url. The image
 # shipped it at /data and pointed at it with a container ENV; systemd units
 # have no image ENVs, so the package ships the file and passes the flag.
-install -D -m 0644 "${src}/data/asnames.ipinfo.csv" "${OUT_DIR}/asnames.ipinfo.csv"
-echo "   asnames.ipinfo.csv: $(wc -c <"${OUT_DIR}/asnames.ipinfo.csv" | tr -d ' ') bytes"
+key="$(recipe_key "component=asnames" "url=${UUID_ANNOTATOR_URL}" \
+  "tag=${UUID_ANNOTATOR_VERSION}")"
+if needs_build asnames.ipinfo.csv "${key}" asnames.ipinfo.csv; then
+  src="$(clone_repo uuid-annotator "${UUID_ANNOTATOR_URL}" "${UUID_ANNOTATOR_VERSION}")"
+  install -D -m 0644 "${src}/data/asnames.ipinfo.csv" "${OUT_DIR}/asnames.ipinfo.csv"
+  echo "   asnames.ipinfo.csv: $(wc -c <"${OUT_DIR}/asnames.ipinfo.csv" | tr -d ' ') bytes"
+  stamp asnames.ipinfo.csv "${key}"
+fi
 
-src="$(clone_repo uuid-annotator https://github.com/m-lab/uuid-annotator.git "${UUID_ANNOTATOR_SCHEMA_VERSION}")"
-go_build "${src}" cmd/generate-schemas generate-schemas-annotation2 0
+build_go generate-schemas-annotation2 "${UUID_ANNOTATOR_URL}" \
+  "${UUID_ANNOTATOR_SCHEMA_VERSION}" cmd/generate-schemas 0
 
 # --- jostler -------------------------------------------------------------------
 # Upstream also stamps main.Version (git describe, i.e. the tag) and
 # main.GitCommit (the full hash).
-src="$(clone_repo jostler https://github.com/m-lab/jostler.git "${JOSTLER_VERSION}")"
-go_build "${src}" cmd/jostler jostler 0 \
-  "-X github.com/m-lab/go/prometheusx.GitShortCommit=$(short_commit "${src}") \
+build_go jostler https://github.com/m-lab/jostler.git "${JOSTLER_VERSION}" \
+  cmd/jostler 0 \
+  "-X github.com/m-lab/go/prometheusx.GitShortCommit=@COMMIT@ \
    -X main.Version=${JOSTLER_VERSION} \
-   -X main.GitCommit=$(git -C "${src}" log -1 --format=%H)"
+   -X main.GitCommit=@COMMIT_FULL@"
 
 # --- traceroute-caller (+ traceroute schema generator + scamper) ---------------
-src="$(clone_repo traceroute-caller https://github.com/m-lab/traceroute-caller.git "${TRACEROUTE_VERSION}")"
-go_build "${src}" . traceroute-caller 0 \
-  "-X github.com/m-lab/go/prometheusx.GitShortCommit=$(short_commit "${src}")"
-go_build "${src}" cmd/generate-schemas generate-schemas-traceroute 0
+TRACEROUTE_URL="https://github.com/m-lab/traceroute-caller.git"
+build_go traceroute-caller "${TRACEROUTE_URL}" "${TRACEROUTE_VERSION}" . 0 \
+  "-X github.com/m-lab/go/prometheusx.GitShortCommit=@COMMIT@"
+build_go generate-schemas-traceroute "${TRACEROUTE_URL}" "${TRACEROUTE_VERSION}" \
+  cmd/generate-schemas 0
 
 # scamper: build the exact tarball the traceroute-caller image vendors.
 # --disable-shared statically links scamper's internal libraries into the
@@ -195,33 +275,41 @@ go_build "${src}" cmd/generate-schemas generate-schemas-traceroute 0
 # image's scamper was built without it, and traceroute-caller does not use the
 # TLS probes. There is no --without-openssl switch (AX_CHECK_OPENSSL), so point
 # the search at an empty directory instead.
-echo ">> building scamper (${SCAMPER_DIST}, vendored in traceroute-caller)"
-scamper_build="${WORK_DIR}/scamper"
-scamper_prefix="${WORK_DIR}/scamper-install"
-mkdir -p "${scamper_build}"
-tar -xzf "${src}/third_party/scamper/${SCAMPER_DIST}.tar.gz" -C "${scamper_build}"
-(
-  cd "${scamper_build}/${SCAMPER_DIST}"
-  chmod +x ./configure
-  ./configure --quiet --prefix="${scamper_prefix}" --disable-shared --with-openssl=/nonexistent
-  make --quiet -j"$(nproc)" >/dev/null
-  make --quiet install >/dev/null
-)
-install -m 0755 "${scamper_prefix}/bin/scamper" "${OUT_DIR}/scamper"
-check_binary "${OUT_DIR}/scamper"
+SCAMPER_CONFIGURE_FLAGS="--disable-shared --with-openssl=/nonexistent"
+key="$(recipe_key "component=scamper" "dist=${SCAMPER_DIST}" \
+  "vendored-in=${TRACEROUTE_VERSION}" "configure=${SCAMPER_CONFIGURE_FLAGS}" \
+  "native=${NATIVE_TOOLCHAIN}")"
+if needs_build scamper "${key}" scamper; then
+  src="$(clone_repo traceroute-caller "${TRACEROUTE_URL}" "${TRACEROUTE_VERSION}")"
+  echo ">> building scamper (${SCAMPER_DIST}, vendored in traceroute-caller)"
+  scamper_build="${WORK_DIR}/scamper"
+  scamper_prefix="${WORK_DIR}/scamper-install"
+  mkdir -p "${scamper_build}"
+  tar -xzf "${src}/third_party/scamper/${SCAMPER_DIST}.tar.gz" -C "${scamper_build}"
+  (
+    cd "${scamper_build}/${SCAMPER_DIST}"
+    chmod +x ./configure
+    # shellcheck disable=SC2086 # deliberate word splitting of the flags
+    ./configure --quiet --prefix="${scamper_prefix}" ${SCAMPER_CONFIGURE_FLAGS}
+    make --quiet -j"$(nproc)" >/dev/null
+    make --quiet install >/dev/null
+  )
+  install -m 0755 "${scamper_prefix}/bin/scamper" "${OUT_DIR}/scamper"
+  check_binary "${OUT_DIR}/scamper"
+  stamp scamper "${key}"
+fi
 
 # --- autojoin-register ----------------------------------------------------------
-src="$(clone_repo autojoin https://github.com/m-lab/autojoin.git "${AUTOJOIN_VERSION}")"
-go_build "${src}" cmd/register autojoin-register 0 \
-  "-s -w -X main.Version=${AUTOJOIN_VERSION}"
+build_go autojoin-register https://github.com/m-lab/autojoin.git \
+  "${AUTOJOIN_VERSION}" cmd/register 0 \
+  "-X main.Version=${AUTOJOIN_VERSION}"
 
 # --- node-exporter ---------------------------------------------------------------
-src="$(clone_repo node_exporter https://github.com/prometheus/node_exporter.git "${NODE_EXPORTER_VERSION}")"
-go_build "${src}" . node-exporter 0 \
+build_go node-exporter https://github.com/prometheus/node_exporter.git \
+  "${NODE_EXPORTER_VERSION}" . 0 \
   "-X github.com/prometheus/common/version.Version=${NODE_EXPORTER_VERSION#v} \
-   -X github.com/prometheus/common/version.Revision=$(git -C "${src}" log -1 --format=%H) \
+   -X github.com/prometheus/common/version.Revision=@COMMIT_FULL@ \
    -X github.com/prometheus/common/version.Branch=HEAD"
 
-printf '%s\n' "${SCRIPT_HASH}" > "${STAMP_FILE}"
 echo
-echo "Staged $(ls -1 "${OUT_DIR}" | wc -l | tr -d ' ') artifacts in ${OUT_DIR}"
+echo "Components: ${BUILT} built, ${SKIPPED} cached; staged in ${OUT_DIR}"

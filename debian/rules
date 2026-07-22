@@ -12,9 +12,9 @@ execute_after_dh_install:
 	dh_installsysusers
 
 # Build the component binaries from the pinned upstream sources. The script
-# owns its own caching: it exits immediately if binaries/ was staged by the
-# current script version (stamp file), and rebuilds after any script change
-# (e.g. a version bump) or interrupted run.
+# owns its own caching: each component carries a recipe-keyed stamp under
+# binaries/.stamps/, so only components whose pin or build flags changed are
+# rebuilt.
 override_dh_auto_build:
 	./.build/build-binaries.sh
 
@@ -31,8 +31,10 @@ override_dh_auto_build:
 override_dh_installsystemd:
 	dh_installsystemd --no-start --no-stop-on-upgrade
 
-# Ship the binaries exactly as built from the pinned upstream sources; do not
-# strip or otherwise rewrite them (Go binaries gain little from stripping, and
-# dwz does not apply).
+# The Go binaries are linked with -s -w (see .build/build-binaries.sh), which
+# leaves dh_strip nothing to do except scamper (C). Strip it, but skip the
+# dbgsym package - nothing would consume it. dwz does not apply to Go.
 override_dh_strip:
+	dh_strip --no-automatic-dbgsym
+
 override_dh_dwz:
