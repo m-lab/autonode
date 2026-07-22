@@ -23,8 +23,13 @@ override_dh_auto_build:
 # units carry no [Install] section (dh_installsystemd only enables units that
 # have one) and are pulled in by the target, so they are only registered for
 # daemon-reload, not enabled or started individually.
+#
+# --no-stop-on-upgrade keeps the old services running while an upgrade
+# unpacks; the postinst then restarts mlab-node.target (upgrades only) so the
+# stack picks up the new binaries. Without it, prerm stops every unit and
+# --no-start would leave the node down after the upgrade.
 override_dh_installsystemd:
-	dh_installsystemd --no-start
+	dh_installsystemd --no-start --no-stop-on-upgrade
 
 # Ship the binaries exactly as built from the pinned upstream sources; do not
 # strip or otherwise rewrite them (Go binaries gain little from stripping, and

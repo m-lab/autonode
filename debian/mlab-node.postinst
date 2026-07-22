@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+#DEBHELPER#
+
+# On upgrade ($2 is the previously-installed version), restart the stack so
+# it picks up the new binaries and unit files. The explicit daemon-reload
+# mirrors dh_installsystemd's own restart-after-upgrade snippet: debhelper
+# 13.31 defers reload to a dpkg file trigger that only fires after postinst,
+# so without it the restart would use the stale in-memory units. Every
+# component is PartOf=mlab-node.target and pulled in by it, so restarting the
+# target cycles the whole stack. On first install ($2 is empty) do nothing:
+# the target is enabled but must not start before the operator configures
+# /etc/mlab/*.env.
+if [ "$1" = "configure" ] && [ -n "$2" ] && [ -d /run/systemd/system ]; then
+    systemctl --system daemon-reload >/dev/null || true
+    deb-systemd-invoke restart mlab-node.target >/dev/null || true
+fi
