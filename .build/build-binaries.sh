@@ -45,7 +45,7 @@ STAMP_SCHEMA=1
 # the compose configuration.
 # NOTE: heartbeat lives in the m-lab/locate repository (cmd/heartbeat); the
 # measurementlab/heartbeat image was built from locate's tags.
-NDT_SERVER_VERSION="v0.25.2"
+NDT_SERVER_VERSION="v0.25.3"
 LOCATE_VERSION="v0.19.1"
 UUID_ANNOTATOR_VERSION="v0.5.10"
 UUID_ANNOTATOR_SCHEMA_VERSION="v0.5.8"
@@ -90,7 +90,10 @@ trap 'chmod -R u+rwX "${WORK_DIR}" 2>/dev/null || true; rm -rf "${WORK_DIR}" 2>/
 # WORK_DIR is removed by the EXIT trap).
 export GOPATH="${AUTONODE_GOPATH:-${WORK_DIR}/go}"
 export GOCACHE="${AUTONODE_GOCACHE:-${WORK_DIR}/gocache}"
-export GOFLAGS="-trimpath -mod=readonly"
+# -modcacherw keeps the module cache writable so cleanup and CI cache
+# handling never trip over go's default read-only files (belt and braces
+# with the chmod in the EXIT trap).
+export GOFLAGS="-trimpath -mod=readonly -modcacherw"
 
 BUILT=0
 SKIPPED=0

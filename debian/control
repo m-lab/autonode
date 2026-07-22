@@ -5,17 +5,18 @@ Maintainer: Measurement Lab <support@measurementlab.net>
 Build-Depends:
  debhelper-compat (= 13),
  file,
- golang-go,
+ golang-go (>= 2:1.21~),
  git,
  ca-certificates,
  gcc,
+ make,
  libc6-dev,
 Standards-Version: 4.6.2
 Homepage: https://github.com/m-lab/autonode
 Rules-Requires-Root: no
 
 Package: mlab-node
-Architecture: amd64
+Architecture: amd64 arm64
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},

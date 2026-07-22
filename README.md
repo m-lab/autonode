@@ -51,10 +51,11 @@ container images were built from.
 
 **CI is the canonical build**: every push runs the
 [`build-deb` workflow](.github/workflows/build-deb.yml), which builds the
-package in a `debian:bookworm` container — bookworm's glibc sets the
+package for **amd64 and arm64** (natively, on `ubuntu-24.04-arm` runners for
+the latter) in a `debian:bookworm` container — bookworm's glibc sets the
 package's `libc6` floor, so the .deb installs on Debian 12 and anything
-newer — and uploads it as a workflow artifact. Pushing a `v*` tag creates a
-GitHub Release with the .deb attached; Releases are what production machines
+newer — and uploads them as workflow artifacts. Pushing a `v*` tag creates a
+GitHub Release with the .debs attached; Releases are what production machines
 should install.
 
 Local builds still work and use the same script. Requires

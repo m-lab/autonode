@@ -1,10 +1,11 @@
 # Build the mlab-node Debian package.
 #
-# Every push/PR builds the .deb in a debian:bookworm container (the oldest
-# supported target: its glibc sets the package's libc6 floor, so the .deb
-# installs on bookworm and anything newer) and uploads it as a CI artifact.
-# Pushing a v* tag additionally creates a GitHub Release with the .deb
-# attached, versioned from the tag.
+# Every push/PR builds the .deb for amd64 and arm64 — natively on
+# ubuntu-24.04-arm runners for the latter, no QEMU — inside a debian:bookworm
+# container (the oldest supported target: its glibc sets the package's libc6
+# floor, so the .deb installs on bookworm and anything newer) and uploads
+# them as CI artifacts. Pushing a v* tag additionally creates a GitHub
+# Release with the .debs attached, versioned from the tag.
 #
 # Caching: binaries/ carries per-component stamps (see
 # .build/build-binaries.sh), so a restored cache rebuilds only the components
@@ -25,7 +26,16 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: build (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     container: debian:bookworm
     env:
       AUTONODE_GOPATH: ${{ github.workspace }}/.go-cache/gopath
@@ -60,19 +70,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: binaries
-          key: binaries-${{ steps.fp.outputs.go }}-${{ hashFiles('.build/build-binaries.sh') }}
+          key: binaries-${{ matrix.arch }}-${{ steps.fp.outputs.go }}-${{ hashFiles('.build/build-binaries.sh') }}
           restore-keys: |
-            binaries-${{ steps.fp.outputs.go }}-
-            binaries-
+            binaries-${{ matrix.arch }}-${{ steps.fp.outputs.go }}-
+            binaries-${{ matrix.arch }}-
 
       - name: Cache Go modules and build cache
         uses: actions/cache@v4
         with:
           path: .go-cache
-          key: go-${{ steps.fp.outputs.go }}-${{ hashFiles('.build/build-binaries.sh') }}
+          key: go-${{ matrix.arch }}-${{ steps.fp.outputs.go }}-${{ hashFiles('.build/build-binaries.sh') }}
           restore-keys: |
-            go-${{ steps.fp.outputs.go }}-
-            go-
+            go-${{ matrix.arch }}-${{ steps.fp.outputs.go }}-
+            go-${{ matrix.arch }}-
 
       # Tag builds get the tag as their version; anything else gets a
       # ~dev.<run>.g<sha> suffix, which sorts before the plain version so
@@ -112,7 +122,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mlab-node-deb
+          name: mlab-node-deb-${{ matrix.arch }}
           path: dist/
           if-no-files-found: error
 
@@ -125,7 +135,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: mlab-node-deb
+          pattern: mlab-node-deb-*
+          merge-multiple: true
           path: dist
 
       - name: Create GitHub Release
