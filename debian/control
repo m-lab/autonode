@@ -26,10 +26,4 @@ Description: M-Lab node (autonode) measurement stack
  (NDT) measurement platform, replacing the former Docker Compose deployment.
  .
  It runs ndt-server and its sidecar services - node registration, heartbeat,
- uuid-annotator, jostler, traceroute-caller (with scamper) and a Prometheus
- node exporter - as hardened systemd services confined with systemd's own
- sandboxing directives. No Docker is required at build or run time.
- .
- The component binaries are built at package build time from the same pinned
- upstream sources M-Lab releases. The whole stack is controlled atomically
- through mlab-node.target.
+ uuid-annotator, jostler, traceroute-caller and a Prometheus node exporter.
