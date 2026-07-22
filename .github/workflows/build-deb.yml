@@ -37,9 +37,11 @@ jobs:
             arch: arm64
     runs-on: ${{ matrix.runner }}
     container: debian:bookworm
+    # Container jobs default to sh; the version-stamping step uses bashisms.
+    defaults:
+      run:
+        shell: bash
     env:
-      AUTONODE_GOPATH: ${{ github.workspace }}/.go-cache/gopath
-      AUTONODE_GOCACHE: ${{ github.workspace }}/.go-cache/gocache
       DEBEMAIL: support@measurementlab.net
       DEBFULLNAME: Measurement Lab
     steps:
@@ -51,6 +53,14 @@ jobs:
             ca-certificates curl
 
       - uses: actions/checkout@v4
+
+      # ${{ github.workspace }} resolves to the HOST path in container jobs;
+      # $GITHUB_WORKSPACE holds the container-side mount, which is what the
+      # build script (and the actions/cache 'path: .go-cache' below) need.
+      - name: Point Go caches into the workspace
+        run: |
+          echo "AUTONODE_GOPATH=${GITHUB_WORKSPACE}/.go-cache/gopath" >> "$GITHUB_ENV"
+          echo "AUTONODE_GOCACHE=${GITHUB_WORKSPACE}/.go-cache/gocache" >> "$GITHUB_ENV"
 
       # Go comes from setup-go, not apt: bookworm's golang-go is far too old
       # for the pinned components. Its built-in cache is disabled because it
