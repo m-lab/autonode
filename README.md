@@ -49,17 +49,35 @@ container images were built from.
 
 ## Building the package
 
-Requires `dpkg-buildpackage`, debhelper, `golang-go`, `git`, `file`, and a C
-toolchain (for scamper and the cgo builds), plus network access to clone the
-pinned sources and fetch Go modules:
+**CI is the canonical build**: every push runs the
+[`build-deb` workflow](.github/workflows/build-deb.yml), which builds the
+package in a `debian:bookworm` container — bookworm's glibc sets the
+package's `libc6` floor, so the .deb installs on Debian 12 and anything
+newer — and uploads it as a workflow artifact. Pushing a `v*` tag creates a
+GitHub Release with the .deb attached; Releases are what production machines
+should install.
+
+Local builds still work and use the same script. Requires
+`dpkg-buildpackage`, debhelper, a recent Go, `git`, `file`, and a C toolchain
+(for scamper and the cgo builds), plus network access to clone the pinned
+sources and fetch Go modules:
 
 ```sh
 dpkg-buildpackage -us -uc -b
 ```
 
+(Add `-d` if Go is installed from upstream tarballs rather than the
+`golang-go` package.) Note that a locally built .deb inherits the host's
+glibc as its `libc6` dependency floor — a package built on a newer distro may
+not install on bookworm; use the CI artifacts for anything that leaves your
+machine.
+
 The build clones each component's repository at its pinned tag, builds the
-binaries (replicating the upstream image builds' flags), and stages them under
-`binaries/`. No container images or Docker are involved.
+binaries (replicating the upstream image builds' flags, plus `-s -w`
+stripping), and stages them under `binaries/`. No container images or Docker
+are involved. Each component is cached with a recipe-keyed stamp under
+`binaries/.stamps/`, so re-builds only recompile components whose version pin
+or build flags changed; delete `binaries/` to force a full rebuild.
 
 ## Installing and configuring
 
