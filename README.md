@@ -1,15 +1,17 @@
 # autonode (mlab-node)
 
 Native Debian packaging of the M-Lab "autonode" Network Diagnostic Tool (NDT)
-measurement stack. Each component runs as a hardened systemd service, confined
-with systemd's own sandboxing directives.
+measurement stack. The components run as hardened **systemd** services, confined
+with systemd's own sandboxing directives — there is no Docker at build or run
+time.
 
-Documentation on host-managed M-Lab servers is in the
+This replaces the previous Docker Compose deployment. Documentation on
+host-managed M-Lab servers is in the
 [Wiki](https://github.com/m-lab/autonode/wiki/Host%E2%80%90managed-Deployments).
 
 ## What's in the package
 
-The `mlab-node` package installs and runs the following systemd services:
+The `mlab-node` package installs and runs, as systemd services:
 
 | Service | Unit |
 |---|---|
@@ -21,13 +23,14 @@ The `mlab-node` package installs and runs the following systemd services:
 | Traceroute caller (scamper) | `mlab-node-traceroute-caller.service` |
 | Prometheus node exporter | `mlab-node-node-exporter.service` |
 
-There are also a few one-shot units for schema generation, the UUID prefix,
-BBR, and external-IP metadata. The whole stack is started and stopped as a
-unit through `mlab-node.target`; if `register-node` goes down, the entire
-stack is brought down with it.
+plus one-shot units for schema generation, the UUID prefix, BBR, and external-IP
+metadata. The whole stack is controlled atomically through `mlab-node.target`;
+`register-node` is the keystone — if it goes down, the entire stack is brought
+down with it.
 
-The component binaries are built at package build time from the pinned
-upstream sources (see `.build/build-binaries.sh`).
+The component binaries are built from the pinned upstream sources at package
+build time (see `.build/build-binaries.sh`) — the same version tags the
+container images were built from.
 
 ## File layout
 
@@ -46,16 +49,16 @@ upstream sources (see `.build/build-binaries.sh`).
 
 ## Building the package
 
-CI is the canonical way to build the package: every push runs the
-[`build-deb` workflow](.github/workflows/build-deb.yml), which builds it for
-amd64 and arm64 (natively, on `ubuntu-24.04-arm` runners for the latter) in a
-`debian:bookworm` container and uploads the resulting .debs as workflow
-artifacts. Building on bookworm sets the package's `libc6` floor to bookworm's
-glibc, so the .deb installs on Debian 12 and anything newer. Pushing a `v*`
-tag creates a GitHub Release with the .debs attached; production machines
-should install from Releases.
+**CI is the canonical build**: every push runs the
+[`build-deb` workflow](.github/workflows/build-deb.yml), which builds the
+package for **amd64 and arm64** (natively, on `ubuntu-24.04-arm` runners for
+the latter) in a `debian:bookworm` container — bookworm's glibc sets the
+package's `libc6` floor, so the .deb installs on Debian 12 and anything
+newer — and uploads them as workflow artifacts. Pushing a `v*` tag creates a
+GitHub Release with the .debs attached; Releases are what production machines
+should install.
 
-Local builds work too and use the same script. You'll need
+Local builds still work and use the same script. Requires
 `dpkg-buildpackage`, debhelper, a recent Go, `git`, `file`, and a C toolchain
 (for scamper and the cgo builds), plus network access to clone the pinned
 sources and fetch Go modules:
@@ -66,13 +69,14 @@ dpkg-buildpackage -us -uc -b
 
 (Add `-d` if Go is installed from upstream tarballs rather than the
 `golang-go` package.) Note that a locally built .deb inherits the host's
-glibc as its `libc6` dependency floor, so a package built on a newer distro
-may not install on bookworm; use the CI artifacts for anything that leaves
-your machine.
+glibc as its `libc6` dependency floor — a package built on a newer distro may
+not install on bookworm; use the CI artifacts for anything that leaves your
+machine.
 
 The build clones each component's repository at its pinned tag, builds the
-binaries (using the upstream builds' flags, plus `-s -w` stripping), and
-stages them under `binaries/`. Each component is cached with a recipe-keyed stamp under
+binaries (replicating the upstream image builds' flags, plus `-s -w`
+stripping), and stages them under `binaries/`. No container images or Docker
+are involved. Each component is cached with a recipe-keyed stamp under
 `binaries/.stamps/`, so re-builds only recompile components whose version pin
 or build flags changed; delete `binaries/` to force a full rebuild.
 
@@ -107,7 +111,7 @@ sudo systemctl restart mlab-node.target
 
 ## Prometheus metrics
 
-All metrics are exposed directly on the host: 9990 ndt-server, 9991 jostler,
-9992 uuid-annotator, 9993 heartbeat, 9994 traceroute-caller,
-9995 node-exporter. ndt-server serves measurements on 80 (cleartext) and
-443 (TLS).
+Exposed on the host (all `network_mode: host` equivalents are now native):
+9990 ndt-server, 9991 jostler, 9992 uuid-annotator, 9993 heartbeat,
+9994 traceroute-caller, 9995 node-exporter. ndt-server serves measurements on
+80 (cleartext) and 443 (TLS).
