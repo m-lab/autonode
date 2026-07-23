@@ -277,12 +277,19 @@ build_go generate-schemas-traceroute "${TRACEROUTE_URL}" "${TRACEROUTE_VERSION}"
 # scamper: build the exact tarball the traceroute-caller image vendors.
 # --disable-shared statically links scamper's internal libraries into the
 # binary, so the package can ship the single file with no private .so deps.
+# --disable-privsep drops scamper's built-in privilege separation (chroot to
+# /var/empty + setuid), which cannot work - by design - inside the
+# traceroute-caller unit's systemd sandbox (read-only /var, no CAP_SYS_CHROOT
+# or CAP_SETUID, chroot filtered) and is redundant there: the unit itself
+# confines scamper, and raw sockets come from the inherited CAP_NET_RAW
+# ambient capability. (The container image instead granted scamper
+# cap_sys_chroot,cap_setuid,cap_setgid file capabilities to let privsep run.)
 # OpenSSL is deliberately not linked: configure would silently pick it up if
 # the dev headers happen to be installed, making the build host-dependent. The
 # image's scamper was built without it, and traceroute-caller does not use the
 # TLS probes. There is no --without-openssl switch (AX_CHECK_OPENSSL), so point
 # the search at an empty directory instead.
-SCAMPER_CONFIGURE_FLAGS="--disable-shared --with-openssl=/nonexistent"
+SCAMPER_CONFIGURE_FLAGS="--disable-shared --disable-privsep --with-openssl=/nonexistent"
 key="$(recipe_key "component=scamper" "dist=${SCAMPER_DIST}" \
   "vendored-in=${TRACEROUTE_VERSION}" "configure=${SCAMPER_CONFIGURE_FLAGS}" \
   "native=${NATIVE_TOOLCHAIN}")"
