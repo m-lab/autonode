@@ -45,6 +45,21 @@ ExecStart=/usr/lib/mlab/ndt-server \
 Restart=always
 RestartSec=5
 
+# Graceful (lame-duck) stop. ndt-server's signal protocol is two SIGTERMs:
+# the 1st flips /health (127.0.0.1:8000) to 500 — heartbeat notices within
+# 10s and reports score 0, so Locate stops directing new clients here — and
+# the 2nd exits the server. ExecStop sends the 1st and waits out the drain
+# window; when it returns, systemd delivers its regular KillSignal (SIGTERM)
+# as the 2nd, and the server exits cleanly with in-flight tests finished.
+# The window mirrors the k8s platform's 100s termination grace period (10s
+# heartbeat notice + 30s Locate propagation + 60s max test length). Do not
+# send the 2nd SIGTERM from the script: ndt-server closes its signal channel
+# after the 2nd, so a 3rd could panic the exiting process.
+ExecStop=/bin/sh -c 'kill -s TERM "$MAINPID"; sleep 100'
+# Bounds each stop phase (ExecStop above, then the SIGTERM kill phase)
+# separately; must exceed the 100s drain or systemd would SIGKILL mid-drain.
+TimeoutStopSec=130
+
 # --- hardening ---
 User=mlab-node
 Group=mlab-node
