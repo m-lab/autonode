@@ -90,6 +90,10 @@ trap 'chmod -R u+rwX "${WORK_DIR}" 2>/dev/null || true; rm -rf "${WORK_DIR}" 2>/
 # WORK_DIR is removed by the EXIT trap).
 export GOPATH="${AUTONODE_GOPATH:-${WORK_DIR}/go}"
 export GOCACHE="${AUTONODE_GOCACHE:-${WORK_DIR}/gocache}"
+# Go's per-build scratch dir ($WORK) follows TMPDIR, not GOCACHE - point it
+# at WORK_DIR too, or large builds can fill a small /tmp tmpfs.
+export GOTMPDIR="${WORK_DIR}/gotmp"
+mkdir -p "${GOTMPDIR}"
 # -modcacherw keeps the module cache writable so cleanup and CI cache
 # handling never trip over go's default read-only files (belt and braces
 # with the chmod in the EXIT trap).
