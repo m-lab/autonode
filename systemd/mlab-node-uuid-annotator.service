@@ -1,0 +1,62 @@
+[Unit]
+Description=M-Lab uuid-annotator (network/geo annotations)
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+Requires=mlab-node-register-ready.service
+After=mlab-node-register-ready.service
+# Soft dependency on ndt-server (compose used service_started); the annotator
+# connects to ndt-server's tcpinfo events.sock.
+Wants=mlab-node-ndt-server.service
+After=mlab-node-ndt-server.service
+BindsTo=mlab-node-register.service
+
+[Service]
+Type=exec
+EnvironmentFile=/usr/lib/mlab/static.env
+EnvironmentFile=/etc/mlab/mlab-node.env
+Environment=GOOGLE_APPLICATION_CREDENTIALS=/var/lib/mlab/node/service-account-autojoin.json
+# Wait for ndt-server's events socket, and clear any stale annotator socket.
+ExecStartPre=/usr/lib/mlab/wait-socket /run/mlab/sockets/events.sock
+ExecStartPre=/bin/rm -f /run/mlab/sockets/uuid-annotator.sock
+ExecStart=/usr/lib/mlab/uuid-annotator \
+  -prometheusx.listen-address=:9992 \
+  -datadir=/var/lib/mlab/resultsdir/ndt/annotation2 \
+  -tcpinfo.eventsocket=/run/mlab/sockets/events.sock \
+  -ipservice.sock=/run/mlab/sockets/uuid-annotator.sock \
+  -maxmind.url=gs://downloader-${PROJECT}/Maxmind/current/GeoLite2-City.tar.gz \
+  -routeview-v4.url=gs://downloader-${PROJECT}/RouteViewIPv4/current/routeview.pfx2as.gz \
+  -routeview-v6.url=gs://downloader-${PROJECT}/RouteViewIPv6/current/routeview.pfx2as.gz \
+  -siteinfo.url=file:///var/lib/mlab/node/annotation.json \
+  -asname.url=file:///usr/share/mlab/asnames.ipinfo.csv \
+  -hostname=@/var/lib/mlab/node/hostname
+Restart=always
+RestartSec=5
+
+# --- hardening ---
+User=mlab-node
+Group=mlab-node
+ReadWritePaths=/var/lib/mlab/resultsdir /run/mlab/sockets
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+# AF_NETLINK is required to enumerate the host's local addresses (the annotator
+# reads them via netlink to annotate the server side of each measurement).
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM

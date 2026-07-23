@@ -1,0 +1,159 @@
+# Build the mlab-node Debian package.
+#
+# Every push/PR builds the .deb for amd64 and arm64 — natively on
+# ubuntu-24.04-arm runners for the latter, no QEMU — inside a debian:bookworm
+# container (the oldest supported target: its glibc sets the package's libc6
+# floor, so the .deb installs on bookworm and anything newer) and uploads
+# them as CI artifacts. Pushing a v* tag additionally creates a GitHub
+# Release with the .debs attached, versioned from the tag.
+#
+# Caching: binaries/ carries per-component stamps (see
+# .build/build-binaries.sh), so a restored cache rebuilds only the components
+# whose pins or build flags changed; the Go module/build caches make even a
+# full rebuild incremental.
+name: build-deb
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: build-deb-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    name: build (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    container: debian:bookworm
+    # Container jobs default to sh; the version-stamping step uses bashisms.
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEBEMAIL: support@measurementlab.net
+      DEBFULLNAME: Measurement Lab
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential debhelper devscripts lintian git file \
+            ca-certificates curl
+
+      - uses: actions/checkout@v4
+
+      # ${{ github.workspace }} resolves to the HOST path in container jobs;
+      # $GITHUB_WORKSPACE holds the container-side mount, which is what the
+      # build script (and the actions/cache 'path: .go-cache' below) need.
+      - name: Point Go caches into the workspace
+        run: |
+          echo "AUTONODE_GOPATH=${GITHUB_WORKSPACE}/.go-cache/gopath" >> "$GITHUB_ENV"
+          echo "AUTONODE_GOCACHE=${GITHUB_WORKSPACE}/.go-cache/gocache" >> "$GITHUB_ENV"
+
+      # Go comes from setup-go, not apt: bookworm's golang-go is far too old
+      # for the pinned components. Its built-in cache is disabled because it
+      # keys on go.sum files, which this repo does not have.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Compute cache fingerprint
+        id: fp
+        run: echo "go=$(go version | awk '{print $3}')" >> "$GITHUB_OUTPUT"
+
+      # Stale restores are useful (restore-keys): the per-component stamps let
+      # the build script skip everything whose recipe did not change.
+      - name: Cache built component binaries
+        uses: actions/cache@v4
+        with:
+          path: binaries
+          key: binaries-${{ matrix.arch }}-${{ steps.fp.outputs.go }}-${{ hashFiles('.build/build-binaries.sh') }}
+          restore-keys: |
+            binaries-${{ matrix.arch }}-${{ steps.fp.outputs.go }}-
+            binaries-${{ matrix.arch }}-
+
+      - name: Cache Go modules and build cache
+        uses: actions/cache@v4
+        with:
+          path: .go-cache
+          key: go-${{ matrix.arch }}-${{ steps.fp.outputs.go }}-${{ hashFiles('.build/build-binaries.sh') }}
+          restore-keys: |
+            go-${{ matrix.arch }}-${{ steps.fp.outputs.go }}-
+            go-${{ matrix.arch }}-
+
+      # Tag builds get the tag as their version; anything else gets a
+      # ~dev.<run>.g<sha> suffix, which sorts before the plain version so
+      # snapshots upgrade cleanly to the eventual release.
+      - name: Set package version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            dch -b --newversion "${GITHUB_REF_NAME#v}" \
+              --distribution unstable "Release ${GITHUB_REF_NAME}."
+          else
+            base="$(dpkg-parsechangelog -SVersion)"
+            dch -b --newversion "${base}~dev.${GITHUB_RUN_NUMBER}.g${GITHUB_SHA::7}" \
+              --distribution UNRELEASED "CI snapshot build."
+          fi
+          dpkg-parsechangelog -SVersion
+
+      # -d: the golang-go build-dep is satisfied by setup-go, invisible to dpkg.
+      - name: Build package
+        run: dpkg-buildpackage -us -uc -b -d
+
+      - name: Lintian
+        run: lintian --fail-on error --tag-display-limit 0 ../mlab-node_*.changes
+
+      # The postinst guards every systemd interaction on /run/systemd/system,
+      # so installing in the build container exercises the maintainer scripts
+      # (sysusers, tmpfiles, enable) without an init system. Installing on
+      # bookworm itself proves the computed libc6 floor is satisfiable on the
+      # oldest supported target.
+      - name: Install smoke test
+        run: |
+          apt-get install -y ../mlab-node_*.deb
+          dpkg -V mlab-node
+          echo "Depends: $(dpkg-deb -f ../mlab-node_*.deb Depends)"
+
+      - name: Collect artifacts
+        run: mkdir -p dist && mv ../mlab-node_* dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlab-node-deb-${{ matrix.arch }}
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mlab-node-deb-*
+          merge-multiple: true
+          path: dist
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/*.deb \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes

@@ -1,0 +1,60 @@
+[Unit]
+Description=M-Lab node registration (Autojoin API)
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+After=network-online.target
+Wants=network-online.target
+# register-node is the keystone of the stack: every other component BindsTo=
+# this unit, so if registration goes down the whole stack is brought down with
+# it (it cannot run without a valid registration). A genuine crash-loop is
+# bounded by the start limit below, at which point the stack stays down.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=exec
+EnvironmentFile=/usr/lib/mlab/static.env
+EnvironmentFile=/etc/mlab/mlab-node.env
+EnvironmentFile=/etc/mlab/api-key.env
+ExecStart=/usr/lib/mlab/autojoin-register \
+  -endpoint=https://autojoin-dot-${PROJECT}.appspot.com/autojoin/v0/node/register \
+  -key=${API_KEY} \
+  -service=ndt \
+  -iata=${IATA} \
+  -output=/var/lib/mlab/node \
+  -healthcheck-addr=:8001 \
+  -ports=9990,9991,9992,9993,9994,9995 \
+  -probability=${PROBABILITY} \
+  -ipv4=${IPV4} \
+  -ipv6=${IPV6} \
+  -type=${TYPE} \
+  -uplink=${UPLINK}
+Restart=always
+RestartSec=10
+
+# --- hardening ---
+User=mlab-node
+Group=mlab-node
+ReadWritePaths=/var/lib/mlab/node
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM

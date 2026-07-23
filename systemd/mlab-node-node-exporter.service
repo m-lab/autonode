@@ -1,0 +1,51 @@
+[Unit]
+Description=Prometheus node exporter for the M-Lab node
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+After=network-online.target
+Wants=network-online.target
+# Part of the atomic stack: brought down with the keystone register-node.
+BindsTo=mlab-node-register.service
+
+[Service]
+Type=exec
+# Running natively on the host, so the default rootfs (/) is correct; the
+# --path.rootfs=/host indirection used under Docker is dropped.
+ExecStart=/usr/lib/mlab/node-exporter \
+  --web.listen-address=:9995 \
+  --collector.disable-defaults \
+  --collector.cpu \
+  --collector.diskstats \
+  --collector.filesystem \
+  --collector.loadavg \
+  --collector.meminfo \
+  --collector.netdev \
+  --collector.stat \
+  --collector.time
+Restart=always
+RestartSec=5
+
+# --- hardening ---
+# node-exporter shares nothing with the rest of the stack and needs no state, so
+# it runs under an ephemeral DynamicUser. It only reads world-readable /proc and
+# /sys, so it needs no capabilities and no write access. ProtectProc= is left at
+# its default: the collectors read system-wide /proc files.
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+PrivateTmp=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM

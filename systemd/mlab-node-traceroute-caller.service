@@ -1,0 +1,63 @@
+[Unit]
+Description=M-Lab traceroute-caller (runs scamper traceroutes)
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+Requires=mlab-node-register-ready.service mlab-node-schemas-traceroute.service mlab-node-metadata.service
+After=mlab-node-register-ready.service mlab-node-schemas-traceroute.service mlab-node-metadata.service
+# Compose required ndt-server to be healthy (traceroute-caller connects to its
+# events.sock); order after it and wait for the socket in ExecStartPre.
+Wants=mlab-node-ndt-server.service
+After=mlab-node-ndt-server.service
+BindsTo=mlab-node-register.service
+
+[Service]
+Type=exec
+EnvironmentFile=/etc/mlab/mlab-node.env
+ExecStartPre=/usr/lib/mlab/wait-socket /run/mlab/sockets/events.sock /run/mlab/sockets/uuid-annotator.sock
+ExecStart=/usr/lib/mlab/traceroute-caller \
+  -scamper.bin=/usr/lib/mlab/scamper \
+  -prometheusx.listen-address=:9994 \
+  -traceroute-output=/var/lib/mlab/resultsdir/ndt/scamper2 \
+  -hopannotation-output=/var/lib/mlab/resultsdir/ndt/hopannotation2 \
+  -tcpinfo.eventsocket=/run/mlab/sockets/events.sock \
+  -IPCacheTimeout=10m \
+  -IPCacheUpdatePeriod=1m \
+  -scamper.timeout=30m \
+  -scamper.waitprobe=15 \
+  -scamper.ptr=true \
+  -ipservice.sock=/run/mlab/sockets/uuid-annotator.sock \
+  -anonymize.ip=none \
+  -scamper.trace-type=regular \
+  -output.format=json
+Restart=always
+RestartSec=5
+
+# --- hardening ---
+User=mlab-node
+Group=mlab-node
+# scamper needs raw sockets to send/receive probes; the child inherits the
+# ambient capability from traceroute-caller.
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
+ReadWritePaths=/var/lib/mlab/resultsdir
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+PrivateTmp=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+# Relaxed for the bundled scamper C binary.
+MemoryDenyWriteExecute=no
+RemoveIPC=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK AF_PACKET
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM

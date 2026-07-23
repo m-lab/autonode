@@ -1,0 +1,10 @@
+#!/bin/sh
+# Write the external IP metadata files consumed by traceroute-caller. Replaces
+# the docker-compose "configs" that injected ${IPV4}/${IPV6} as files.
+# IPV4/IPV6 come from the mlab-node EnvironmentFile.
+set -eu
+
+: "${IPV4:=}"
+: "${IPV6:=}"
+printf '%s' "${IPV4}" > /run/mlab/metadata/external-ip
+printf '%s' "${IPV6}" > /run/mlab/metadata/external-ipv6

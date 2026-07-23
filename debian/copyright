@@ -1,0 +1,33 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: autonode
+Source: https://github.com/m-lab/autonode
+
+Files: *
+Copyright: 2025-2026 Measurement Lab
+License: Apache-2.0
+
+Files: binaries/*
+Copyright: 2025-2026 Measurement Lab and the Prometheus Authors
+Comment:
+ These binaries are built at package build time from the pinned upstream
+ sources by .build/build-binaries.sh. They are not part of the source in this
+ repository. Each component is licensed under its own upstream license; see
+ the respective M-Lab, Prometheus and scamper projects (scamper, vendored in
+ m-lab/traceroute-caller, is GPL-2 licensed).
+License: Apache-2.0
+
+License: Apache-2.0
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ .
+     https://www.apache.org/licenses/LICENSE-2.0
+ .
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ .
+ On Debian systems, the full text of the Apache License version 2.0 can be
+ found in the file /usr/share/common-licenses/Apache-2.0.

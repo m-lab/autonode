@@ -1,0 +1,90 @@
+[Unit]
+Description=M-Lab ndt-server (NDT7 measurement service)
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+# Start ordering / gating (replaces docker-compose depends_on):
+#   register-ready  -> registration succeeded (service_healthy)
+#   schemas-ndt7    -> ndt7 schema generated (service_completed_successfully)
+#   uuidprefix/bbr  -> prerequisites generated/loaded
+Requires=mlab-node-register-ready.service mlab-node-schemas-ndt7.service mlab-node-uuidprefix.service mlab-node-bbr.service
+After=mlab-node-register-ready.service mlab-node-schemas-ndt7.service mlab-node-uuidprefix.service mlab-node-bbr.service
+# Atomic lifecycle: ndt-server cannot run without an active registration.
+BindsTo=mlab-node-register.service
+
+[Service]
+Type=exec
+EnvironmentFile=/etc/mlab/mlab-node.env
+# Clear any stale tcpinfo socket left by a previous instance before binding.
+ExecStartPre=/bin/rm -f /run/mlab/sockets/events.sock
+ExecStart=/usr/lib/mlab/ndt-server \
+  -uuid-prefix-file=/var/lib/mlab/schemas/uuid.prefix \
+  -datadir=/var/lib/mlab/resultsdir/ndt \
+  -htmldir=/usr/share/mlab/html \
+  -ndt7_addr=:443 \
+  -ndt7_addr_cleartext=:80 \
+  -compress-results=false \
+  -txcontroller.device=${INTERFACE_NAME} \
+  -txcontroller.max-rate=${INTERFACE_MAXRATE} \
+  -prometheusx.listen-address=:9990 \
+  -label=type=${TYPE} \
+  -label=deployment=byos \
+  -label=managed=none \
+  -label=loadbalanced=false \
+  -label=org=${ORGANIZATION} \
+  -label=external-ip=${IPV4} \
+  -label=external-ipv6=${IPV6} \
+  -ndt5_addr=127.0.0.1:3002 \
+  -ndt5_ws_addr=127.0.0.1:3001 \
+  -tcpinfo.eventsocket=/run/mlab/sockets/events.sock \
+  -autocert.enabled=true \
+  -autocert.dir=/var/lib/mlab/autocert \
+  -autocert.hostname=@/var/lib/mlab/node/hostname \
+  -token.machine=@/var/lib/mlab/node/hostname \
+  -token.verify-key=/etc/mlab/locate/verify.pub \
+  -ndt7.token.required=true
+Restart=always
+RestartSec=5
+
+# Graceful (lame-duck) stop. ndt-server's signal protocol is two SIGTERMs:
+# the 1st flips /health (127.0.0.1:8000) to 500 — heartbeat notices within
+# 10s and reports score 0, so Locate stops directing new clients here — and
+# the 2nd exits the server. ExecStop sends the 1st and waits out the drain
+# window; when it returns, systemd delivers its regular KillSignal (SIGTERM)
+# as the 2nd, and the server exits cleanly with in-flight tests finished.
+# The window mirrors the k8s platform's 100s termination grace period (10s
+# heartbeat notice + 30s Locate propagation + 60s max test length). Do not
+# send the 2nd SIGTERM from the script: ndt-server closes its signal channel
+# after the 2nd, so a 3rd could panic the exiting process.
+ExecStop=/bin/sh -c 'kill -s TERM "$MAINPID"; sleep 100'
+# Bounds each stop phase (ExecStop above, then the SIGTERM kill phase)
+# separately; must exceed the 100s drain or systemd would SIGKILL mid-drain.
+TimeoutStopSec=130
+
+# --- hardening ---
+User=mlab-node
+Group=mlab-node
+# Bind the privileged ports 80/443 without running as root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+ReadWritePaths=/var/lib/mlab/resultsdir /var/lib/mlab/autocert /run/mlab/sockets
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+PrivateTmp=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+# AF_NETLINK is required by -txcontroller to read the interface transmit rate.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM

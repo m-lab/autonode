@@ -1,0 +1,13 @@
+[Unit]
+Description=Ensure tcp_bbr kernel module is loaded for ndt-server
+Documentation=https://github.com/m-lab/autonode
+PartOf=mlab-node.target
+After=systemd-modules-load.service
+# Replaces the docker-compose check-bbr container. modprobe both loads the
+# module (covering a fresh install before the next reboot) and fails loudly if
+# the kernel cannot provide it. modules-load.d also loads it at boot.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/modprobe tcp_bbr

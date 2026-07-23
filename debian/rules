@@ -1,0 +1,40 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+# dh_installsysusers is not part of the default dh sequence on debhelper 13.14
+# (unlike dh_installtmpfiles), so invoke it explicitly to create the mlab-node
+# system user from debian/mlab-node.sysusers. Running it here (after dh_install,
+# before dh_installtmpfiles) orders the postinst so the user exists before the
+# tmpfiles directories are chowned to it.
+execute_after_dh_install:
+	dh_installsysusers
+
+# Build the component binaries from the pinned upstream sources. The script
+# owns its own caching: each component carries a recipe-keyed stamp under
+# binaries/.stamps/, so only components whose pin or build flags changed are
+# rebuilt.
+override_dh_auto_build:
+	./.build/build-binaries.sh
+
+# Install the target so it is enabled (auto-start on boot) but not started at
+# install time - the operator must configure /etc/mlab/*.env first. The other
+# units carry no [Install] section (dh_installsystemd only enables units that
+# have one) and are pulled in by the target, so they are only registered for
+# daemon-reload, not enabled or started individually.
+#
+# --no-stop-on-upgrade keeps the old services running while an upgrade
+# unpacks; the postinst then restarts mlab-node.target (upgrades only) so the
+# stack picks up the new binaries. Without it, prerm stops every unit and
+# --no-start would leave the node down after the upgrade.
+override_dh_installsystemd:
+	dh_installsystemd --no-start --no-stop-on-upgrade
+
+# The Go binaries are linked with -s -w (see .build/build-binaries.sh), which
+# leaves dh_strip nothing to do except scamper (C). Strip it, but skip the
+# dbgsym package - nothing would consume it. dwz does not apply to Go.
+override_dh_strip:
+	dh_strip --no-automatic-dbgsym
+
+override_dh_dwz:

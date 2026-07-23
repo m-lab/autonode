@@ -1,1 +1,22 @@
 .env
+.DS_Store
+
+# Binaries built from the pinned upstream sources at build time (see
+# .build/build-binaries.sh). Not checked in.
+/binaries/
+/.build-work.*
+
+# Persistent Go caches used by CI (AUTONODE_GOPATH/AUTONODE_GOCACHE).
+/.go-cache/
+
+# Debian build artifacts.
+/debian/mlab-node/
+/debian/.debhelper/
+/debian/files
+/debian/*.debhelper
+/debian/*.debhelper.log
+/debian/*.substvars
+/debian/debhelper-build-stamp
+*.deb
+*.buildinfo
+*.changes
