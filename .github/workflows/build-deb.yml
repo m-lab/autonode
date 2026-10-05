@@ -135,6 +135,7 @@ jobs:
           name: mlab-node-deb-${{ matrix.arch }}
           path: dist/
           if-no-files-found: error
+          retention-days: 1
 
   release:
     if: github.ref_type == 'tag'
