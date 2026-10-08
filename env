@@ -67,7 +67,7 @@ UPLINK=
 # refuse new connections. Set it according to this node's uplink defined in
 # UPLINK.
 # Recommended values:
-# - 1G: INTERFACE_MAXRATE=150000000
+# - 1G: INTERFACE_MAXRATE=400000000
 # - 10G: INTERFACE_MAXRATE=7000000000
 INTERFACE_MAXRATE=
 
