@@ -12,7 +12,7 @@ VM_ZONE="us-central1-c"
 VM_NAME="autonode"
 DOCKER_COMPOSE_FILE_PATH="./docker-compose.yml"
 INTERFACE_NAME="ens4"
-INTERFACE_MAXRATE="150000000"
+INTERFACE_MAXRATE="4000000000"
 SA_ACCOUNT="autonode@${PROJECT}.iam.gserviceaccount.com"
 
 LOCATE_URL="locate-dot-${PROJECT}.appspot.com"
