@@ -1,3 +1,13 @@
+# M-Lab autonode deployment.
+#
+# Run from this directory:
+#
+#   # NDT + reverse traceroute (recommended):
+#   docker compose --env-file env.local --profile ndt --profile revtr up -d
+#
+#   # NDT only (no reverse traceroute):
+#   docker compose --env-file env.local --profile ndt up -d
+
 services:
   # Register this node with the Autojoin API. A successful registration will
   # assign a DNS name for this node based on the public IPs, their ASN,
@@ -249,6 +259,8 @@ services:
       - ./resultsdir:/resultsdir
       - ./schemas:/schemas
       - ./metadata:/metadata
+      # Mount the host scamper binary; select it via SCAMPER_BIN in the env file.
+      - /usr/local/bin/scamper:/usr/local/bin/scamper-anticollision:ro
     depends_on:
       generate-schemas-traceroute:
         condition: service_completed_successfully
@@ -256,6 +268,11 @@ services:
         condition: service_healthy
       ndt-server:
         condition: service_healthy
+    environment:
+      # Partition the ICMP identifier space so traceroute-caller's scamper
+      # does not collide with revtrvp's scamper (see SCAMPER_ICMP_ID_* in env).
+      - SCAMPER_ICMP_ID_BASE=${SCAMPER_ICMP_ID_BASE:-}
+      - SCAMPER_ICMP_ID_RANGE=${SCAMPER_ICMP_ID_RANGE:-}
     pull_policy: always
     restart: always
     configs:
@@ -277,6 +294,7 @@ services:
       - -anonymize.ip=none
       - -scamper.trace-type=regular
       - -output.format=json
+      - -scamper.bin=${SCAMPER_BIN}
 
   node-exporter:
     image: quay.io/prometheus/node-exporter:v1.9.0
@@ -335,6 +353,59 @@ services:
   check-bbr:
     image: bash:latest
     command: ["sh", "-c", "lsmod | grep tcp_bbr"]
+
+  # ── Reverse traceroute (--profile revtr) ────────────────────────────────────
+  #
+  # revtrvp is a scamper-based vantage point that listens on ndt-server's public
+  # IP (via shared network namespace) and executes spoofed-ICMP probing
+  # instructions from the revtr controller.
+  #
+  # revtr-sidecar watches completed NDT connections and asks the revtr controller
+  # to run a reverse traceroute from each client back to this node.
+  #
+  # Both services require REVTR_* variables to be set in the env file.
+  revtrvp:
+    image: ghcr.io/neu-sns/revtrvp:latest
+    profiles: [revtr]
+    restart: unless-stopped
+    # Share ndt-server's network namespace so revtrvp listens on the same public
+    # IP that clients used for the speedtest.
+    network_mode: "service:ndt-server"
+    cap_add:
+      - NET_RAW
+    volumes:
+      - ./revtrvp/plvp.config:/plvp.config:ro
+    environment:
+      # Allocate the lower half of the ICMP identifier space [0, 32768) to
+      # revtrvp's scamper; traceroute-caller takes the upper half (see env).
+      - SCAMPER_ICMP_ID_BASE=0
+      - SCAMPER_ICMP_ID_RANGE=32768
+    command: ["/server.crt", "/plvp.config", "-loglevel", "info"]
+    depends_on:
+      ndt-server:
+        condition: service_healthy
+
+  revtr-sidecar:
+    image: ghcr.io/neu-sns/revtr-sidecar:latest
+    profiles: [revtr]
+    restart: unless-stopped
+    network_mode: "service:ndt-server"
+    volumes:
+      - ./schemas/events.sock:/schemas/events.sock:ro
+    environment:
+      # flagx.ArgsFromEnv maps flag names to env vars: revtr.APIKey→REVTR_APIKEY,
+      # revtr.hostname→REVTR_HOSTNAME, revtr.grpcPort→REVTR_GRPCPORT,
+      # revtr.sampling→REVTR_SAMPLING, tcpinfo.eventsocket→TCPINFO_EVENTSOCKET.
+      - REVTR_HOSTNAME=${REVTR_HOSTNAME}
+      - REVTR_APIKEY=${REVTR_API_KEY}
+      - REVTR_GRPCPORT=${REVTR_GRPC_PORT}
+      - REVTR_SAMPLING=${REVTR_SAMPLING:-1}
+      - TCPINFO_EVENTSOCKET=/schemas/events.sock
+    depends_on:
+      ndt-server:
+        condition: service_healthy
+      revtrvp:
+        condition: service_started
 
 configs:
   locate-verify-key:
