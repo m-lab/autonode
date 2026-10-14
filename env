@@ -85,9 +85,54 @@ IPV6=
 # bare-metal machine dedicated to M-Lab, or a VM?
 TYPE=
 
+# ### Reverse Traceroute sidecar configuration ###
+
+# REVTR_API_KEY is the API key used to call the reverse traceroute gRPC API.
+REVTR_API_KEY=
+
+# REVTR_HOSTNAME is the hostname of the reverse traceroute API server.
+REVTR_HOSTNAME=revtr.ccs.neu.edu
+
+# REVTR_GRPC_PORT is the gRPC port of the reverse traceroute API.
+# Use 9998 for a debug/insecure connection (no TLS), any other port uses TLS.
+REVTR_GRPC_PORT=9999
+
+# REVTR_SAMPLING controls the sampling rate passed to the revtr-sidecar as
+# -revtr.sampling: only 1 out of every N NDT connections triggers a reverse
+# traceroute. Must be > 0. Use 1 to trigger on every connection.
+REVTR_SAMPLING=1
+
+# SCAMPER_BIN selects which scamper binary traceroute-caller uses.
+#
+# /usr/local/bin/scamper          — bundled binary inside the container image
+#                                   (default; no host binary required)
+#
+# /usr/local/bin/scamper-anticollision — host binary mounted from the machine
+#                                   running this compose stack; built with the
+#                                   ICMP-ID space partitioning fix. Use this
+#                                   when multiple scamper instances run on the
+#                                   same host (e.g. alongside revtrvp) so that
+#                                   each gets a non-overlapping ICMP ID range.
+#                                   Requires /usr/local/bin/scamper to exist on
+#                                   the host (the volume mount in
+#                                   docker-compose.yml exposes it inside the
+#                                   container at the path above).
+# SCAMPER_BIN=/usr/local/bin/scamper
+SCAMPER_BIN=/usr/local/bin/scamper
+
+# SCAMPER_ICMP_ID_BASE and SCAMPER_ICMP_ID_RANGE partition the 16-bit ICMP
+# identifier space between scamper instances that share the host network
+# namespace (traceroute-caller and revtrvp both run on the same IP).
+# traceroute-caller takes the upper half; revtrvp takes the lower half.
+# These values are passed to scamper via the environment and only take effect
+# when using the patched scamper-anticollision binary (SCAMPER_BIN above).
+SCAMPER_ICMP_ID_BASE=32768
+SCAMPER_ICMP_ID_RANGE=32768
+
 # ### Static configuration variables ###
 # ###    Do NOT change these.        ###
 
 PROJECT=mlab-autojoin
 LOCATE_URL=locate.measurementlab.net
 AUTH_URL=auth.mlab-oti.measurementlab.net
+
