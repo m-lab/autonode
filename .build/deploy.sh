@@ -20,6 +20,7 @@ AUTH_URL="auth.${PROJECT}.measurementlab.net"
 if [ "$PROJECT" = "mlab-autojoin" ]; then
   LOCATE_URL="locate.measurementlab.net"
   AUTH_URL="auth.mlab-oti.measurementlab.net"
+  VM_ZONE="us-central1-a"
 fi
 
 DOCKER_TAG=$(
