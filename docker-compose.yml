@@ -1,3 +1,13 @@
+# M-Lab autonode deployment.
+#
+# Run from this directory:
+#
+#   # NDT + reverse traceroute (recommended):
+#   docker compose --env-file env.local --profile ndt --profile revtr up -d
+#
+#   # NDT only (no reverse traceroute):
+#   docker compose --env-file env.local --profile ndt up -d
+
 services:
   # Register this node with the Autojoin API. A successful registration will
   # assign a DNS name for this node based on the public IPs, their ASN,
@@ -336,6 +346,69 @@ services:
   check-bbr:
     image: bash:latest
     command: ["sh", "-c", "lsmod | grep tcp_bbr"]
+
+  # ── Reverse traceroute (--profile revtr) ────────────────────────────────────
+  #
+  # revtrvp is a scamper-based vantage point that listens on ndt-server's public
+  # IP (via shared network namespace) and executes spoofed-ICMP probing
+  # instructions from the revtr controller.
+  #
+  # revtr-sidecar watches completed NDT connections and asks the revtr controller
+  # to run a reverse traceroute from each client back to this node.
+  #
+  # Neither service needs configuration from the site host: the revtr API key
+  # is delivered by register-node to ./autonode/revtr-api-key.
+  #
+  # TODO: the images below are development builds of the NEU-SNS branches for
+  # this change; switch to release tags before merging.
+  revtrvp:
+    image: ghcr.io/neu-sns/revtrvp:feat-scamper-icmp-id-partitioning
+    profiles: [revtr]
+    pull_policy: always
+    restart: unless-stopped
+    # Share ndt-server's network namespace so revtrvp listens on the same public
+    # IP that clients used for the speedtest.
+    network_mode: "service:ndt-server"
+    cap_add:
+      - NET_RAW
+    volumes:
+      - ./revtrvp/plvp.config:/plvp.config:ro
+    environment:
+      # Confine revtrvp's scamper to the lower half of the ICMP identifier
+      # space [0, 32768). traceroute-caller's scamper only uses ICMP IDs in the
+      # upper half (see README, "ICMP identifier partitioning").
+      - SCAMPER_ICMP_ID_BASE=0
+      - SCAMPER_ICMP_ID_RANGE=32768
+    command: ["/server.crt", "/plvp.config", "-loglevel", "info"]
+    depends_on:
+      ndt-server:
+        condition: service_healthy
+
+  revtr-sidecar:
+    image: ghcr.io/neu-sns/revtr-sidecar:feat-autonode-support
+    profiles: [revtr]
+    pull_policy: always
+    restart: unless-stopped
+    network_mode: "service:ndt-server"
+    volumes:
+      - ./schemas/events.sock:/schemas/events.sock:ro
+      - ./autonode:/autonode:ro
+    environment:
+      # flagx.ArgsFromEnv maps flag names to env vars, e.g.
+      # revtr.APIKeyFile→REVTR_APIKEYFILE, revtr.grpcPort→REVTR_GRPCPORT.
+      - REVTR_HOSTNAME=revtr.ccs.neu.edu
+      - REVTR_GRPCPORT=9999
+      - REVTR_APIKEYFILE=/autonode/revtr-api-key
+      # TODO: deliver the sampling rate through the register API.
+      - REVTR_SAMPLING=1
+      - TCPINFO_EVENTSOCKET=/schemas/events.sock
+    depends_on:
+      ndt-server:
+        condition: service_healthy
+      register-node:
+        condition: service_healthy
+      revtrvp:
+        condition: service_started
 
 configs:
   locate-verify-key:
