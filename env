@@ -6,19 +6,13 @@
 # Docker compose. If they do not exist, they are created the first time the
 # containers start, owned by the docker daemon's user (generally root).
 #
-# The only folder that MUST exist and contain the service account key file
-# (see below) is ./certs. This file must also be readable by Docker's user.
-#
-# All other folders are created and managed by the containers in the Docker
-# compose.
+# All folders are created and managed by the containers in the Docker compose.
+# No credentials need to be placed by hand.
 #
 # ./html: Content served by ndt-server. Can be used to provide your own
 #   speedtest UI.
 #
-# ./certs: Contains the service account key file. This key file (provided by
-#   M-Lab) is expected to be placed at certs/service-account-autojoin.json.
-#   This file must be present for several components in the docker compose to
-#   work properly.
+# ./certs: Mounted by several containers. No credentials are expected here.
 #
 # ./resultsdir: Contains the test results waiting to be uploaded.
 #
@@ -28,7 +22,11 @@
 #   so that they can be reused across docker compose restarts.
 #
 # ./autonode: Contains the configuration files for the NDT server and all the
-#   sidecar containers, provided by the Autojoin API on node registration.
+#   sidecar containers, provided by the Autojoin API on node registration. It
+#   also holds the GCS credentials written by register: storage-token.jwt (a
+#   short-lived token, refreshed hourly) and gcs-credentials.json (the
+#   Application Default Credentials config that points at the token), both with
+#   mode 0600.
 #
 # ./metadata: Contains configuration files used by some services such as
 #   traceroute-caller to read external IP addresses in some environments.
