@@ -6,7 +6,9 @@ services:
   # the Autojoin API every hour.
   register-node:
     # NOTE: register should not be restarted on failure.
-    image: measurementlab/autojoin-register:v0.5.1
+    # TEMPORARY, SANDBOX ONLY: "latest" is the image Docker Hub builds from the
+    # autojoin sandbox branch. Replace with a released version before merging.
+    image: measurementlab/autojoin-register:latest
     profiles: [check-config, ndt]
     pull_policy: always
     network_mode: host
